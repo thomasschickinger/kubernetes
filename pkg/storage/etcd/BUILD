@@ -22,7 +22,7 @@ go_library(
     deps = [
         "//pkg/api:go_default_library",
         "//pkg/api/meta:go_default_library",
-        "//pkg/api/unversioned:go_default_library",
+        "//pkg/apis/meta/v1:go_default_library",
         "//pkg/conversion:go_default_library",
         "//pkg/runtime:go_default_library",
         "//pkg/storage:go_default_library",
@@ -51,6 +51,7 @@ go_test(
         "//pkg/api:go_default_library",
         "//pkg/api/testapi:go_default_library",
         "//pkg/api/testing:go_default_library",
+        "//pkg/api/v1:go_default_library",
         "//pkg/apimachinery/registered:go_default_library",
         "//pkg/conversion:go_default_library",
         "//pkg/fields:go_default_library",
@@ -63,7 +64,6 @@ go_test(
         "//pkg/storage/testing:go_default_library",
         "//pkg/watch:go_default_library",
         "//vendor:github.com/coreos/etcd/client",
-        "//vendor:github.com/stretchr/testify/assert",
         "//vendor:golang.org/x/net/context",
     ],
 )

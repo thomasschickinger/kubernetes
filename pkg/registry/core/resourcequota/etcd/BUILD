@@ -17,12 +17,11 @@ go_library(
     deps = [
         "//pkg/api:go_default_library",
         "//pkg/api/rest:go_default_library",
-        "//pkg/registry/cachesize:go_default_library",
+        "//pkg/apis/meta/v1:go_default_library",
         "//pkg/registry/core/resourcequota:go_default_library",
         "//pkg/registry/generic:go_default_library",
         "//pkg/registry/generic/registry:go_default_library",
         "//pkg/runtime:go_default_library",
-        "//pkg/storage:go_default_library",
     ],
 )
 
@@ -35,11 +34,11 @@ go_test(
         "//pkg/api:go_default_library",
         "//pkg/api/resource:go_default_library",
         "//pkg/api/rest:go_default_library",
+        "//pkg/apis/meta/v1:go_default_library",
         "//pkg/fields:go_default_library",
         "//pkg/labels:go_default_library",
         "//pkg/registry/generic:go_default_library",
         "//pkg/registry/registrytest:go_default_library",
-        "//pkg/storage/etcd/etcdtest:go_default_library",
         "//pkg/storage/etcd/testing:go_default_library",
         "//pkg/util/diff:go_default_library",
     ],

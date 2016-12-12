@@ -31,10 +31,11 @@ go_library(
     deps = [
         "//pkg/api:go_default_library",
         "//pkg/api/meta:go_default_library",
-        "//pkg/api/unversioned:go_default_library",
         "//pkg/apimachinery/registered:go_default_library",
         "//pkg/apis/extensions:go_default_library",
+        "//pkg/apis/meta/v1:go_default_library",
         "//pkg/client/restclient:go_default_library",
+        "//pkg/runtime/schema:go_default_library",
         "//pkg/watch:go_default_library",
     ],
 )

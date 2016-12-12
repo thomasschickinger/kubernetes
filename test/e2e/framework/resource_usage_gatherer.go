@@ -28,9 +28,8 @@ import (
 	"text/tabwriter"
 	"time"
 
-	. "github.com/onsi/gomega"
-	"k8s.io/kubernetes/pkg/api"
-	clientset "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
+	"k8s.io/kubernetes/pkg/api/v1"
+	clientset "k8s.io/kubernetes/pkg/client/clientset_generated/release_1_5"
 	utilruntime "k8s.io/kubernetes/pkg/util/runtime"
 	"k8s.io/kubernetes/pkg/util/system"
 )
@@ -250,7 +249,7 @@ func NewResourceUsageGatherer(c clientset.Interface, options ResourceGathererOpt
 			finished:   false,
 		})
 	} else {
-		pods, err := c.Core().Pods("kube-system").List(api.ListOptions{})
+		pods, err := c.Core().Pods("kube-system").List(v1.ListOptions{})
 		if err != nil {
 			Logf("Error while listing Pods: %v", err)
 			return nil, err
@@ -262,14 +261,14 @@ func NewResourceUsageGatherer(c clientset.Interface, options ResourceGathererOpt
 				g.containerIDs = append(g.containerIDs, containerID)
 			}
 		}
-		nodeList, err := c.Core().Nodes().List(api.ListOptions{})
+		nodeList, err := c.Core().Nodes().List(v1.ListOptions{})
 		if err != nil {
 			Logf("Error while listing Nodes: %v", err)
 			return nil, err
 		}
 
 		for _, node := range nodeList.Items {
-			if !options.masterOnly || system.IsMasterNode(&node) {
+			if !options.masterOnly || system.IsMasterNode(node.Name) {
 				g.workerWg.Add(1)
 				g.workers = append(g.workers, resourceGatherWorker{
 					c:                    c,
@@ -295,7 +294,7 @@ func (g *containerResourceGatherer) startGatheringData() {
 	g.getKubeSystemContainersResourceUsage(g.client)
 }
 
-func (g *containerResourceGatherer) stopAndSummarize(percentiles []int, constraints map[string]ResourceConstraint) *ResourceUsageSummary {
+func (g *containerResourceGatherer) stopAndSummarize(percentiles []int, constraints map[string]ResourceConstraint) (*ResourceUsageSummary, error) {
 	close(g.stopCh)
 	Logf("Closed stop channel. Waiting for %v workers", len(g.workers))
 	finished := make(chan struct{})
@@ -318,7 +317,7 @@ func (g *containerResourceGatherer) stopAndSummarize(percentiles []int, constrai
 
 	if len(percentiles) == 0 {
 		Logf("Warning! Empty percentile list for stopAndPrintData.")
-		return &ResourceUsageSummary{}
+		return &ResourceUsageSummary{}, nil
 	}
 	data := make(map[int]ResourceUsagePerContainer)
 	for i := range g.workers {
@@ -373,6 +372,8 @@ func (g *containerResourceGatherer) stopAndSummarize(percentiles []int, constrai
 			}
 		}
 	}
-	Expect(violatedConstraints).To(BeEmpty())
-	return &summary
+	if len(violatedConstraints) > 0 {
+		return &summary, fmt.Errorf(strings.Join(violatedConstraints, "\n"))
+	}
+	return &summary, nil
 }

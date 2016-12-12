@@ -23,10 +23,11 @@ import (
 	"strings"
 	"testing"
 
-	metrics_api "k8s.io/heapster/metrics/apis/metrics/v1alpha1"
+	"net/url"
+
+	metricsapi "k8s.io/heapster/metrics/apis/metrics/v1alpha1"
 	"k8s.io/kubernetes/pkg/client/restclient/fake"
 	cmdtesting "k8s.io/kubernetes/pkg/kubectl/cmd/testing"
-	"net/url"
 )
 
 func TestTopPodAllNamespacesMetrics(t *testing.T) {
@@ -84,14 +85,14 @@ func TestTopPodAllInNamespaceMetrics(t *testing.T) {
 	metrics := testPodMetricsData()
 	testNamespace := "testnamespace"
 	nonTestNamespace := "anothernamespace"
-	expectedMetrics := metrics_api.PodMetricsList{
+	expectedMetrics := metricsapi.PodMetricsList{
 		ListMeta: metrics.ListMeta,
 		Items:    metrics.Items[0:2],
 	}
 	for _, m := range expectedMetrics.Items {
 		m.Namespace = testNamespace
 	}
-	nonExpectedMetrics := metrics_api.PodMetricsList{
+	nonExpectedMetrics := metricsapi.PodMetricsList{
 		ListMeta: metrics.ListMeta,
 		Items:    metrics.Items[2:],
 	}
@@ -143,7 +144,7 @@ func TestTopPodWithNameMetrics(t *testing.T) {
 	initTestErrorHandler(t)
 	metrics := testPodMetricsData()
 	expectedMetrics := metrics.Items[0]
-	nonExpectedMetrics := metrics_api.PodMetricsList{
+	nonExpectedMetrics := metricsapi.PodMetricsList{
 		ListMeta: metrics.ListMeta,
 		Items:    metrics.Items[1:],
 	}
@@ -191,11 +192,11 @@ func TestTopPodWithNameMetrics(t *testing.T) {
 func TestTopPodWithLabelSelectorMetrics(t *testing.T) {
 	initTestErrorHandler(t)
 	metrics := testPodMetricsData()
-	expectedMetrics := metrics_api.PodMetricsList{
+	expectedMetrics := metricsapi.PodMetricsList{
 		ListMeta: metrics.ListMeta,
 		Items:    metrics.Items[0:2],
 	}
-	nonExpectedMetrics := metrics_api.PodMetricsList{
+	nonExpectedMetrics := metricsapi.PodMetricsList{
 		ListMeta: metrics.ListMeta,
 		Items:    metrics.Items[2:],
 	}
@@ -248,7 +249,7 @@ func TestTopPodWithContainersMetrics(t *testing.T) {
 	initTestErrorHandler(t)
 	metrics := testPodMetricsData()
 	expectedMetrics := metrics.Items[0]
-	nonExpectedMetrics := metrics_api.PodMetricsList{
+	nonExpectedMetrics := metricsapi.PodMetricsList{
 		ListMeta: metrics.ListMeta,
 		Items:    metrics.Items[1:],
 	}

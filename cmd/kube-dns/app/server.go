@@ -29,12 +29,12 @@ import (
 	"github.com/spf13/pflag"
 
 	"k8s.io/kubernetes/cmd/kube-dns/app/options"
-	"k8s.io/kubernetes/pkg/api/unversioned"
-	clientset "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
+	clientset "k8s.io/kubernetes/pkg/client/clientset_generated/release_1_5"
 	"k8s.io/kubernetes/pkg/client/restclient"
 	kclientcmd "k8s.io/kubernetes/pkg/client/unversioned/clientcmd"
 	kdns "k8s.io/kubernetes/pkg/dns"
-	dnsConfig "k8s.io/kubernetes/pkg/dns/config"
+	dnsconfig "k8s.io/kubernetes/pkg/dns/config"
+	"k8s.io/kubernetes/pkg/runtime/schema"
 )
 
 type KubeDNSServer struct {
@@ -47,32 +47,30 @@ type KubeDNSServer struct {
 }
 
 func NewKubeDNSServerDefault(config *options.KubeDNSConfig) *KubeDNSServer {
-	ks := KubeDNSServer{domain: config.ClusterDomain}
-
 	kubeClient, err := newKubeClient(config)
 	if err != nil {
 		glog.Fatalf("Failed to create a kubernetes client: %v", err)
 	}
 
-	ks.healthzPort = config.HealthzPort
-	ks.dnsBindAddress = config.DNSBindAddress
-	ks.dnsPort = config.DNSPort
-
-	var configSync dnsConfig.Sync
+	var configSync dnsconfig.Sync
 	if config.ConfigMap == "" {
 		glog.V(0).Infof("ConfigMap not configured, using values from command line flags")
-		configSync = dnsConfig.NewNopSync(
-			&dnsConfig.Config{Federations: config.Federations})
+		configSync = dnsconfig.NewNopSync(
+			&dnsconfig.Config{Federations: config.Federations})
 	} else {
 		glog.V(0).Infof("Using configuration read from ConfigMap: %v:%v",
 			config.ConfigMapNs, config.ConfigMap)
-		configSync = dnsConfig.NewSync(
+		configSync = dnsconfig.NewSync(
 			kubeClient, config.ConfigMapNs, config.ConfigMap)
 	}
 
-	ks.kd = kdns.NewKubeDNS(kubeClient, config.ClusterDomain, configSync)
-
-	return &ks
+	return &KubeDNSServer{
+		domain:         config.ClusterDomain,
+		healthzPort:    config.HealthzPort,
+		dnsBindAddress: config.DNSBindAddress,
+		dnsPort:        config.DNSPort,
+		kd:             kdns.NewKubeDNS(kubeClient, config.ClusterDomain, config.InitialSyncTimeout, configSync),
+	}
 }
 
 // TODO: evaluate using pkg/client/clientcmd
@@ -86,7 +84,7 @@ func newKubeClient(dnsConfig *options.KubeDNSConfig) (clientset.Interface, error
 		// Only --kube-master-url was provided.
 		config = &restclient.Config{
 			Host:          dnsConfig.KubeMasterURL,
-			ContentConfig: restclient.ContentConfig{GroupVersion: &unversioned.GroupVersion{Version: "v1"}},
+			ContentConfig: restclient.ContentConfig{GroupVersion: &schema.GroupVersion{Version: "v1"}},
 		}
 	} else {
 		// We either have:

@@ -16,9 +16,11 @@ go_library(
     tags = ["automanaged"],
     deps = [
         "//pkg/api:go_default_library",
-        "//pkg/api/unversioned:go_default_library",
-        "//pkg/client/clientset_generated/internalclientset:go_default_library",
+        "//pkg/api/v1:go_default_library",
+        "//pkg/apis/meta/v1:go_default_library",
+        "//pkg/client/clientset_generated/release_1_5:go_default_library",
         "//pkg/types:go_default_library",
+        "//pkg/util/strategicpatch:go_default_library",
         "//vendor:github.com/golang/glog",
     ],
 )
@@ -29,7 +31,7 @@ go_test(
     library = "go_default_library",
     tags = ["automanaged"],
     deps = [
-        "//pkg/api:go_default_library",
-        "//pkg/api/unversioned:go_default_library",
+        "//pkg/api/v1:go_default_library",
+        "//pkg/apis/meta/v1:go_default_library",
     ],
 )
