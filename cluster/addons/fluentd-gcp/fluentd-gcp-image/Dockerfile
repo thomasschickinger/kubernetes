@@ -37,7 +37,7 @@ RUN apt-get -qq update && \
     td-agent-gem install --no-document fluent-plugin-record-reformer -v 0.8.2 && \
     td-agent-gem install --no-document fluent-plugin-systemd -v 0.0.5 && \
     td-agent-gem install --no-document fluent-plugin-google-cloud -v 0.5.2 && \
-    td-agent-gem install --no-document fluent-plugin-detect-exceptions -v 0.0.1 && \
+    td-agent-gem install --no-document fluent-plugin-detect-exceptions -v 0.0.3 && \
     # Remove build tools
     apt-get remove -y -qq gcc make && \
     apt-get autoremove -y -qq && \
