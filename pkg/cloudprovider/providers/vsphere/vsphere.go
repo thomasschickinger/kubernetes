@@ -254,7 +254,7 @@ func getVMName(client *govmomi.Client, cfg *VSphereConfig) (string, error) {
 
 func newVSphere(cfg VSphereConfig) (*VSphere, error) {
 	if cfg.Disk.SCSIControllerType == "" {
-		cfg.Disk.SCSIControllerType = LSILogicSASControllerType
+		cfg.Disk.SCSIControllerType = PVSCSIControllerType
 	} else if !checkControllerSupported(cfg.Disk.SCSIControllerType) {
 		glog.Errorf("%v is not a supported SCSI Controller type. Please configure 'lsilogic-sas' OR 'pvscsi'", cfg.Disk.SCSIControllerType)
 		return nil, errors.New("Controller type not supported. Please configure 'lsilogic-sas' OR 'pvscsi'")
@@ -338,8 +338,11 @@ func vSphereLogin(ctx context.Context, vs *VSphere) error {
 	m := session.NewManager(vs.client.Client)
 	// retrieve client's current session
 	u, err := m.UserSession(ctx)
-	if err == nil && u == nil {
-		// current session is valid
+	if err != nil {
+		glog.Errorf("Error while obtaining user session. err: %q", err)
+		return err
+	}
+	if u != nil {
 		return nil
 	}
 

@@ -39,7 +39,7 @@ import (
 	"k8s.io/kubernetes/pkg/storage"
 	utilruntime "k8s.io/kubernetes/pkg/util/runtime"
 	"k8s.io/kubernetes/pkg/util/validation/field"
-	"k8s.io/kubernetes/pkg/version"
+	utilversion "k8s.io/kubernetes/pkg/util/version"
 	"k8s.io/kubernetes/pkg/watch"
 
 	"github.com/golang/glog"
@@ -235,11 +235,11 @@ func isOldKubectl(userAgent string) bool {
 	if len(subs) != 2 {
 		return false
 	}
-	kubectlVersion, versionErr := version.Parse(subs[1])
+	kubectlVersion, versionErr := utilversion.ParseSemantic(subs[1])
 	if versionErr != nil {
 		return false
 	}
-	return kubectlVersion.LT(version.MustParse("v1.4.0"))
+	return kubectlVersion.LessThan(utilversion.MustParseSemantic("v1.4.0"))
 }
 
 // Create inserts a new item according to the unique key from the object.
@@ -879,9 +879,6 @@ func (e *Store) Watch(ctx api.Context, options *api.ListOptions) (watch.Interfac
 func (e *Store) WatchPredicate(ctx api.Context, p storage.SelectionPredicate, resourceVersion string) (watch.Interface, error) {
 	if name, ok := p.MatchesSingle(); ok {
 		if key, err := e.KeyFunc(ctx, name); err == nil {
-			if err != nil {
-				return nil, err
-			}
 			w, err := e.Storage.Watch(ctx, key, resourceVersion, p)
 			if err != nil {
 				return nil, err

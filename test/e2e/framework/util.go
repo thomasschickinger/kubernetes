@@ -40,7 +40,6 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/blang/semver"
 	"github.com/golang/glog"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/net/websocket"
@@ -50,19 +49,21 @@ import (
 	. "github.com/onsi/gomega"
 	gomegatypes "github.com/onsi/gomega/types"
 
-	"k8s.io/kubernetes/federation/client/clientset_generated/federation_release_1_5"
+	federationapi "k8s.io/kubernetes/federation/apis/federation/v1beta1"
+	"k8s.io/kubernetes/federation/client/clientset_generated/federation_clientset"
 	"k8s.io/kubernetes/pkg/api"
 	apierrs "k8s.io/kubernetes/pkg/api/errors"
 	"k8s.io/kubernetes/pkg/api/v1"
 	"k8s.io/kubernetes/pkg/apimachinery/registered"
 	apps "k8s.io/kubernetes/pkg/apis/apps/v1beta1"
+	batchinternal "k8s.io/kubernetes/pkg/apis/batch"
 	batch "k8s.io/kubernetes/pkg/apis/batch/v1"
 	extensionsinternal "k8s.io/kubernetes/pkg/apis/extensions"
 	extensions "k8s.io/kubernetes/pkg/apis/extensions/v1beta1"
 	metav1 "k8s.io/kubernetes/pkg/apis/meta/v1"
 	"k8s.io/kubernetes/pkg/apis/meta/v1/unstructured"
+	clientset "k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
-	clientset "k8s.io/kubernetes/pkg/client/clientset_generated/release_1_5"
 	"k8s.io/kubernetes/pkg/client/conditions"
 	"k8s.io/kubernetes/pkg/client/restclient"
 	"k8s.io/kubernetes/pkg/client/typed/discovery"
@@ -86,8 +87,8 @@ import (
 	"k8s.io/kubernetes/pkg/util/sets"
 	"k8s.io/kubernetes/pkg/util/system"
 	"k8s.io/kubernetes/pkg/util/uuid"
+	utilversion "k8s.io/kubernetes/pkg/util/version"
 	"k8s.io/kubernetes/pkg/util/wait"
-	"k8s.io/kubernetes/pkg/version"
 	"k8s.io/kubernetes/pkg/watch"
 	"k8s.io/kubernetes/plugin/pkg/scheduler/algorithm/predicates"
 	"k8s.io/kubernetes/plugin/pkg/scheduler/schedulercache"
@@ -171,12 +172,11 @@ const (
 	// GC issues 2 requestes for single delete.
 	gcThroughput = 10
 
+	// Minimal number of nodes for the cluster to be considered large.
+	largeClusterThreshold = 100
+
 	// TODO(justinsb): Avoid hardcoding this.
 	awsMasterIP = "172.20.0.9"
-
-	// Default time to wait for nodes to become schedulable.
-	// Set so high for scale tests.
-	NodeSchedulableTimeout = 4 * time.Hour
 )
 
 var (
@@ -234,8 +234,8 @@ func GetPauseImageNameForHostArch() string {
 //
 // TODO(ihmccreery): remove once we don't care about v1.0 anymore, (tentatively
 // in v1.3).
-var SubResourcePodProxyVersion = version.MustParse("v1.1.0")
-var subResourceServiceAndNodeProxyVersion = version.MustParse("v1.2.0")
+var SubResourcePodProxyVersion = utilversion.MustParseSemantic("v1.1.0")
+var subResourceServiceAndNodeProxyVersion = utilversion.MustParseSemantic("v1.2.0")
 
 func GetServicesProxyRequest(c clientset.Interface, request *restclient.Request) (*restclient.Request, error) {
 	subResourceProxyAvailable, err := ServerVersionGTE(subResourceServiceAndNodeProxyVersion, c.Discovery())
@@ -350,7 +350,7 @@ func NodeOSDistroIs(supportedNodeOsDistros ...string) bool {
 	return false
 }
 
-func SkipUnlessServerVersionGTE(v semver.Version, c discovery.ServerVersionInterface) {
+func SkipUnlessServerVersionGTE(v *utilversion.Version, c discovery.ServerVersionInterface) {
 	gte, err := ServerVersionGTE(v, c)
 	if err != nil {
 		Failf("Failed to get server version: %v", err)
@@ -364,7 +364,7 @@ func SkipUnlessServerVersionGTE(v semver.Version, c discovery.ServerVersionInter
 func SkipUnlessFederated(c clientset.Interface) {
 	federationNS := os.Getenv("FEDERATION_NAMESPACE")
 	if federationNS == "" {
-		federationNS = "federation"
+		federationNS = federationapi.FederationNamespaceSystem
 	}
 
 	_, err := c.Core().Namespaces().Get(federationNS, metav1.GetOptions{})
@@ -501,8 +501,6 @@ func WaitForPodsSuccess(c clientset.Interface, ns string, successPodLabels map[s
 	return nil
 }
 
-var ReadyReplicaVersion = version.MustParse("v1.4.0")
-
 // WaitForPodsRunningReady waits up to timeout to ensure that all pods in
 // namespace ns are either running and ready, or failed but controlled by a
 // controller. Also, it ensures that at least minPods are running and
@@ -518,12 +516,6 @@ var ReadyReplicaVersion = version.MustParse("v1.4.0")
 // means "Ready" or not.
 // If skipSucceeded is true, any pods that are Succeeded are not counted.
 func WaitForPodsRunningReady(c clientset.Interface, ns string, minPods int32, timeout time.Duration, ignoreLabels map[string]string, skipSucceeded bool) error {
-	// This can be removed when we no longer have 1.3 servers running with upgrade tests.
-	hasReadyReplicas, err := ServerVersionGTE(ReadyReplicaVersion, c.Discovery())
-	if err != nil {
-		Logf("Error getting the server version: %v", err)
-		return err
-	}
 
 	ignoreSelector := labels.SelectorFromSet(ignoreLabels)
 	start := time.Now()
@@ -546,26 +538,24 @@ func WaitForPodsRunningReady(c clientset.Interface, ns string, minPods int32, ti
 		// checked.
 		replicas, replicaOk := int32(0), int32(0)
 
-		if hasReadyReplicas {
-			rcList, err := c.Core().ReplicationControllers(ns).List(v1.ListOptions{})
-			if err != nil {
-				Logf("Error getting replication controllers in namespace '%s': %v", ns, err)
-				return false, nil
-			}
-			for _, rc := range rcList.Items {
-				replicas += *rc.Spec.Replicas
-				replicaOk += rc.Status.ReadyReplicas
-			}
+		rcList, err := c.Core().ReplicationControllers(ns).List(v1.ListOptions{})
+		if err != nil {
+			Logf("Error getting replication controllers in namespace '%s': %v", ns, err)
+			return false, nil
+		}
+		for _, rc := range rcList.Items {
+			replicas += *rc.Spec.Replicas
+			replicaOk += rc.Status.ReadyReplicas
+		}
 
-			rsList, err := c.Extensions().ReplicaSets(ns).List(v1.ListOptions{})
-			if err != nil {
-				Logf("Error getting replication sets in namespace %q: %v", ns, err)
-				return false, nil
-			}
-			for _, rs := range rsList.Items {
-				replicas += *rs.Spec.Replicas
-				replicaOk += rs.Status.ReadyReplicas
-			}
+		rsList, err := c.Extensions().ReplicaSets(ns).List(v1.ListOptions{})
+		if err != nil {
+			Logf("Error getting replication sets in namespace %q: %v", ns, err)
+			return false, nil
+		}
+		for _, rs := range rsList.Items {
+			replicas += *rs.Spec.Replicas
+			replicaOk += rs.Status.ReadyReplicas
 		}
 
 		podList, err := c.Core().Pods(ns).List(v1.ListOptions{})
@@ -606,9 +596,7 @@ func WaitForPodsRunningReady(c clientset.Interface, ns string, minPods int32, ti
 
 		Logf("%d / %d pods in namespace '%s' are running and ready (%d seconds elapsed)",
 			nOk, len(podList.Items), ns, int(time.Since(start).Seconds()))
-		if hasReadyReplicas {
-			Logf("expected %d pod replicas in namespace '%s', %d are Running and Ready.", replicas, ns, replicaOk)
-		}
+		Logf("expected %d pod replicas in namespace '%s', %d are Running and Ready.", replicas, ns, replicaOk)
 
 		if replicaOk == replicas && nOk >= minPods && len(badPods) == 0 {
 			return true, nil
@@ -814,7 +802,7 @@ func WaitForDefaultServiceAccountInNamespace(c clientset.Interface, namespace st
 
 // WaitForFederationApiserverReady waits for the federation apiserver to be ready.
 // It tests the readiness by sending a GET request and expecting a non error response.
-func WaitForFederationApiserverReady(c *federation_release_1_5.Clientset) error {
+func WaitForFederationApiserverReady(c *federation_clientset.Clientset) error {
 	return wait.PollImmediate(time.Second, 1*time.Minute, func() (bool, error) {
 		_, err := c.Federation().Clusters().List(v1.ListOptions{})
 		if err != nil {
@@ -1624,19 +1612,19 @@ func (r podProxyResponseChecker) CheckAllResponses() (done bool, err error) {
 // version.
 //
 // TODO(18726): This should be incorporated into client.VersionInterface.
-func ServerVersionGTE(v semver.Version, c discovery.ServerVersionInterface) (bool, error) {
+func ServerVersionGTE(v *utilversion.Version, c discovery.ServerVersionInterface) (bool, error) {
 	serverVersion, err := c.ServerVersion()
 	if err != nil {
 		return false, fmt.Errorf("Unable to get server version: %v", err)
 	}
-	sv, err := version.Parse(serverVersion.GitVersion)
+	sv, err := utilversion.ParseSemantic(serverVersion.GitVersion)
 	if err != nil {
 		return false, fmt.Errorf("Unable to parse server version %q: %v", serverVersion.GitVersion, err)
 	}
-	return sv.GTE(v), nil
+	return sv.AtLeast(v), nil
 }
 
-func SkipUnlessKubectlVersionGTE(v semver.Version) {
+func SkipUnlessKubectlVersionGTE(v *utilversion.Version) {
 	gte, err := KubectlVersionGTE(v)
 	if err != nil {
 		Failf("Failed to get kubectl version: %v", err)
@@ -1648,25 +1636,25 @@ func SkipUnlessKubectlVersionGTE(v semver.Version) {
 
 // KubectlVersionGTE returns true if the kubectl version is greater than or
 // equal to v.
-func KubectlVersionGTE(v semver.Version) (bool, error) {
+func KubectlVersionGTE(v *utilversion.Version) (bool, error) {
 	kv, err := KubectlVersion()
 	if err != nil {
 		return false, err
 	}
-	return kv.GTE(v), nil
+	return kv.AtLeast(v), nil
 }
 
 // KubectlVersion gets the version of kubectl that's currently being used (see
 // --kubectl-path in e2e.go to use an alternate kubectl).
-func KubectlVersion() (semver.Version, error) {
+func KubectlVersion() (*utilversion.Version, error) {
 	output := RunKubectlOrDie("version", "--client")
 	matches := gitVersionRegexp.FindStringSubmatch(output)
 	if len(matches) != 2 {
-		return semver.Version{}, fmt.Errorf("Could not find kubectl version in output %v", output)
+		return nil, fmt.Errorf("Could not find kubectl version in output %v", output)
 	}
 	// Don't use the full match, as it contains "GitVersion:\"" and a
 	// trailing "\"".  Just use the submatch.
-	return version.Parse(matches[1])
+	return utilversion.ParseSemantic(matches[1])
 }
 
 func PodsResponding(c clientset.Interface, ns, name string, wantName bool, pods *v1.PodList) error {
@@ -1821,13 +1809,13 @@ func LoadFederatedConfig(overrides *clientcmd.ConfigOverrides) (*restclient.Conf
 	return cfg, nil
 }
 
-func LoadFederationClientset_1_5() (*federation_release_1_5.Clientset, error) {
+func LoadFederationClientset_1_5() (*federation_clientset.Clientset, error) {
 	config, err := LoadFederatedConfig(&clientcmd.ConfigOverrides{})
 	if err != nil {
 		return nil, err
 	}
 
-	c, err := federation_release_1_5.NewForConfig(config)
+	c, err := federation_clientset.NewForConfig(config)
 	if err != nil {
 		return nil, fmt.Errorf("error creating federation clientset: %v", err.Error())
 	}
@@ -2435,7 +2423,9 @@ func WaitForAllNodesSchedulable(c clientset.Interface, timeout time.Duration) er
 	Logf("Waiting up to %v for all (but %d) nodes to be schedulable", timeout, TestContext.AllowedNotReadyNodes)
 
 	var notSchedulable []*v1.Node
+	attempt := 0
 	return wait.PollImmediate(30*time.Second, timeout, func() (bool, error) {
+		attempt++
 		notSchedulable = nil
 		opts := v1.ListOptions{
 			ResourceVersion: "0",
@@ -2461,12 +2451,16 @@ func WaitForAllNodesSchedulable(c clientset.Interface, timeout time.Duration) er
 		//
 		// However, we only allow non-ready nodes with some specific reasons.
 		if len(notSchedulable) > 0 {
-			Logf("Unschedulable nodes:")
-			for i := range notSchedulable {
-				Logf("-> %s Ready=%t Network=%t",
-					notSchedulable[i].Name,
-					IsNodeConditionSetAsExpected(notSchedulable[i], v1.NodeReady, true),
-					IsNodeConditionSetAsExpected(notSchedulable[i], v1.NodeNetworkUnavailable, false))
+			// In large clusters, log them only every 10th pass.
+			if len(nodes.Items) >= largeClusterThreshold && attempt%10 == 0 {
+				Logf("Unschedulable nodes:")
+				for i := range notSchedulable {
+					Logf("-> %s Ready=%t Network=%t",
+						notSchedulable[i].Name,
+						IsNodeConditionSetAsExpectedSilent(notSchedulable[i], v1.NodeReady, true),
+						IsNodeConditionSetAsExpectedSilent(notSchedulable[i], v1.NodeNetworkUnavailable, false))
+				}
+				Logf("================================")
 			}
 		}
 		if len(notSchedulable) > TestContext.AllowedNotReadyNodes {
@@ -2633,16 +2627,7 @@ func RemoveTaintOffNode(c clientset.Interface, nodeName string, taint v1.Taint) 
 }
 
 func getScalerForKind(internalClientset internalclientset.Interface, kind schema.GroupKind) (kubectl.Scaler, error) {
-	switch kind {
-	case api.Kind("ReplicationController"):
-		return kubectl.ScalerFor(api.Kind("ReplicationController"), internalClientset)
-	case extensionsinternal.Kind("ReplicaSet"):
-		return kubectl.ScalerFor(extensionsinternal.Kind("ReplicaSet"), internalClientset)
-	case extensionsinternal.Kind("Deployment"):
-		return kubectl.ScalerFor(extensionsinternal.Kind("Deployment"), internalClientset)
-	default:
-		return nil, fmt.Errorf("Unsupported kind for getting Scaler: %v", kind)
-	}
+	return kubectl.ScalerFor(kind, internalClientset)
 }
 
 func ScaleResource(
@@ -2781,6 +2766,8 @@ func getRuntimeObjectForKind(c clientset.Interface, kind schema.GroupKind, ns, n
 		return c.Extensions().Deployments(ns).Get(name, metav1.GetOptions{})
 	case extensionsinternal.Kind("DaemonSet"):
 		return c.Extensions().DaemonSets(ns).Get(name, metav1.GetOptions{})
+	case batchinternal.Kind("Job"):
+		return c.Batch().Jobs(ns).Get(name, metav1.GetOptions{})
 	default:
 		return nil, fmt.Errorf("Unsupported kind when getting runtime object: %v", kind)
 	}
@@ -2794,6 +2781,10 @@ func deleteResource(c clientset.Interface, kind schema.GroupKind, ns, name strin
 		return c.Extensions().ReplicaSets(ns).Delete(name, deleteOption)
 	case extensionsinternal.Kind("Deployment"):
 		return c.Extensions().Deployments(ns).Delete(name, deleteOption)
+	case extensionsinternal.Kind("DaemonSet"):
+		return c.Extensions().DaemonSets(ns).Delete(name, deleteOption)
+	case batchinternal.Kind("Job"):
+		return c.Batch().Jobs(ns).Delete(name, deleteOption)
 	default:
 		return fmt.Errorf("Unsupported kind when deleting: %v", kind)
 	}
@@ -2808,6 +2799,8 @@ func getSelectorFromRuntimeObject(obj runtime.Object) (labels.Selector, error) {
 	case *extensions.Deployment:
 		return metav1.LabelSelectorAsSelector(typed.Spec.Selector)
 	case *extensions.DaemonSet:
+		return metav1.LabelSelectorAsSelector(typed.Spec.Selector)
+	case *batch.Job:
 		return metav1.LabelSelectorAsSelector(typed.Spec.Selector)
 	default:
 		return nil, fmt.Errorf("Unsupported kind when getting selector: %v", obj)
@@ -2831,24 +2824,20 @@ func getReplicasFromRuntimeObject(obj runtime.Object) (int32, error) {
 			return *typed.Spec.Replicas, nil
 		}
 		return 0, nil
+	case *batch.Job:
+		// TODO: currently we use pause pods so that's OK. When we'll want to switch to Pods
+		// that actually finish we need a better way to do this.
+		if typed.Spec.Parallelism != nil {
+			return *typed.Spec.Parallelism, nil
+		}
+		return 0, nil
 	default:
 		return -1, fmt.Errorf("Unsupported kind when getting number of replicas: %v", obj)
 	}
 }
 
 func getReaperForKind(internalClientset internalclientset.Interface, kind schema.GroupKind) (kubectl.Reaper, error) {
-	switch kind {
-	case api.Kind("ReplicationController"):
-		return kubectl.ReaperFor(api.Kind("ReplicationController"), internalClientset)
-	case extensionsinternal.Kind("ReplicaSet"):
-		return kubectl.ReaperFor(extensionsinternal.Kind("ReplicaSet"), internalClientset)
-	case extensionsinternal.Kind("Deployment"):
-		return kubectl.ReaperFor(extensionsinternal.Kind("Deployment"), internalClientset)
-	case extensionsinternal.Kind("DaemonSet"):
-		return kubectl.ReaperFor(extensionsinternal.Kind("DaemonSet"), internalClientset)
-	default:
-		return nil, fmt.Errorf("Unsupported kind: %v", kind)
-	}
+	return kubectl.ReaperFor(kind, internalClientset)
 }
 
 // DeleteResourceAndPods deletes a given resource and all pods it spawned
@@ -3299,6 +3288,40 @@ func WaitForDeploymentRollbackCleared(c clientset.Interface, ns, deploymentName 
 		return fmt.Errorf("error waiting for deployment %s rollbackTo to be cleared: %v", deploymentName, err)
 	}
 	return nil
+}
+
+// WatchRecreateDeployment watches Recreate deployments and ensures no new pods will run at the same time with
+// old pods.
+func WatchRecreateDeployment(c clientset.Interface, d *extensions.Deployment) error {
+	if d.Spec.Strategy.Type != extensions.RecreateDeploymentStrategyType {
+		return fmt.Errorf("deployment %q does not use a Recreate strategy: %s", d.Name, d.Spec.Strategy.Type)
+	}
+
+	w, err := c.Extensions().Deployments(d.Namespace).Watch(v1.SingleObject(v1.ObjectMeta{Name: d.Name, ResourceVersion: d.ResourceVersion}))
+	if err != nil {
+		return err
+	}
+
+	status := d.Status
+
+	condition := func(event watch.Event) (bool, error) {
+		d := event.Object.(*extensions.Deployment)
+		status = d.Status
+
+		if d.Status.UpdatedReplicas > 0 && d.Status.Replicas != d.Status.UpdatedReplicas {
+			return false, fmt.Errorf("deployment %q is running new pods alongside old pods: %#v", d.Name, status)
+		}
+
+		return *(d.Spec.Replicas) == d.Status.Replicas &&
+			*(d.Spec.Replicas) == d.Status.UpdatedReplicas &&
+			d.Generation <= d.Status.ObservedGeneration, nil
+	}
+
+	_, err = watch.Until(2*time.Minute, w, condition)
+	if err == wait.ErrWaitTimeout {
+		err = fmt.Errorf("deployment %q never completed: %#v", d.Name, status)
+	}
+	return err
 }
 
 // WaitForDeploymentRevisionAndImage waits for the deployment's and its new RS's revision and container image to match the given revision and image.
@@ -4010,7 +4033,11 @@ func AllNodesReady(c clientset.Interface, timeout time.Duration) error {
 	}
 
 	if len(notReady) > TestContext.AllowedNotReadyNodes || !allowedNotReadyReasons(notReady) {
-		return fmt.Errorf("Not ready nodes: %#v", notReady)
+		msg := ""
+		for _, node := range notReady {
+			msg = fmt.Sprintf("%s, %s", msg, node.Name)
+		}
+		return fmt.Errorf("Not ready nodes: %#v", msg)
 	}
 	return nil
 }
@@ -4842,6 +4869,13 @@ func GetPodsInNamespace(c clientset.Interface, ns string, ignoreLabels map[strin
 // RunCmd runs cmd using args and returns its stdout and stderr. It also outputs
 // cmd's stdout and stderr to their respective OS streams.
 func RunCmd(command string, args ...string) (string, string, error) {
+	return RunCmdEnv(nil, command, args...)
+}
+
+// RunCmdEnv runs cmd with the provided environment and args and
+// returns its stdout and stderr. It also outputs cmd's stdout and
+// stderr to their respective OS streams.
+func RunCmdEnv(env []string, command string, args ...string) (string, string, error) {
 	Logf("Running %s %v", command, args)
 	var bout, berr bytes.Buffer
 	cmd := exec.Command(command, args...)
@@ -4852,6 +4886,7 @@ func RunCmd(command string, args ...string) (string, string, error) {
 	// newlines.
 	cmd.Stdout = io.MultiWriter(os.Stdout, &bout)
 	cmd.Stderr = io.MultiWriter(os.Stderr, &berr)
+	cmd.Env = env
 	err := cmd.Run()
 	stdout, stderr := bout.String(), berr.String()
 	if err != nil {

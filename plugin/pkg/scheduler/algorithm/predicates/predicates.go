@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"math/rand"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -109,7 +110,7 @@ type predicateMetadata struct {
 
 func isVolumeConflict(volume v1.Volume, pod *v1.Pod) bool {
 	// fast path if there is no conflict checking targets.
-	if volume.GCEPersistentDisk == nil && volume.AWSElasticBlockStore == nil && volume.RBD == nil {
+	if volume.GCEPersistentDisk == nil && volume.AWSElasticBlockStore == nil && volume.RBD == nil && volume.ISCSI == nil {
 		return false
 	}
 
@@ -124,6 +125,26 @@ func isVolumeConflict(volume v1.Volume, pod *v1.Pod) bool {
 
 		if volume.AWSElasticBlockStore != nil && existingVolume.AWSElasticBlockStore != nil {
 			if volume.AWSElasticBlockStore.VolumeID == existingVolume.AWSElasticBlockStore.VolumeID {
+				return true
+			}
+		}
+
+		if volume.ISCSI != nil && existingVolume.ISCSI != nil {
+			iqn, lun, target := volume.ISCSI.IQN, volume.ISCSI.Lun, volume.ISCSI.TargetPortal
+			eiqn, elun, etarget := existingVolume.ISCSI.IQN, existingVolume.ISCSI.Lun, existingVolume.ISCSI.TargetPortal
+			if !strings.Contains(target, ":") {
+				target = target + ":3260"
+			}
+			if !strings.Contains(etarget, ":") {
+				etarget = etarget + ":3260"
+			}
+			lun1 := strconv.Itoa(int(lun))
+			elun1 := strconv.Itoa(int(elun))
+
+			// two ISCSI volumes are same, if they share the same iqn, lun and target. As iscsi volumes are of type
+			// RWO or ROX, we could permit only one RW mount. Same iscsi volume mounted by multiple Pods
+			// conflict unless all other pods mount as read only.
+			if iqn == eiqn && lun1 == elun1 && target == etarget && !(volume.ISCSI.ReadOnly && existingVolume.ISCSI.ReadOnly) {
 				return true
 			}
 		}
@@ -150,6 +171,7 @@ func isVolumeConflict(volume v1.Volume, pod *v1.Pod) bool {
 // - GCE PD allows multiple mounts as long as they're all read-only
 // - AWS EBS forbids any two pods mounting the same volume ID
 // - Ceph RBD forbids if any two pods share at least same monitor, and match pool and image.
+// - ISCSI forbids if any two pods share at least same IQN, LUN and Target
 // TODO: migrate this into some per-volume specific code?
 func NoDiskConflict(pod *v1.Pod, meta interface{}, nodeInfo *schedulercache.NodeInfo) (bool, []algorithm.PredicateFailureReason, error) {
 	for _, v := range pod.Spec.Volumes {
@@ -560,14 +582,6 @@ func podMatchesNodeLabels(pod *v1.Pod, node *v1.Node) bool {
 		}
 	}
 
-	// Parse required node affinity scheduling requirements
-	// and check if the current node match the requirements.
-	affinity, err := v1.GetAffinityFromPodAnnotations(pod.Annotations)
-	if err != nil {
-		glog.V(10).Infof("Failed to get Affinity from Pod %+v, err: %+v", podName(pod), err)
-		return false
-	}
-
 	// 1. nil NodeSelector matches all nodes (i.e. does not filter out any nodes)
 	// 2. nil []NodeSelectorTerm (equivalent to non-nil empty NodeSelector) matches no nodes
 	// 3. zero-length non-nil []NodeSelectorTerm matches no nodes also, just for simplicity
@@ -575,6 +589,7 @@ func podMatchesNodeLabels(pod *v1.Pod, node *v1.Node) bool {
 	// 5. zero-length non-nil []NodeSelectorRequirement matches no nodes also, just for simplicity
 	// 6. non-nil empty NodeSelectorRequirement is not allowed
 	nodeAffinityMatches := true
+	affinity := pod.Spec.Affinity
 	if affinity != nil && affinity.NodeAffinity != nil {
 		nodeAffinity := affinity.NodeAffinity
 		// if no required NodeAffinity requirements, will do no-op, means select all nodes.
@@ -714,6 +729,11 @@ func NewServiceAffinityPredicate(podLister algorithm.PodLister, serviceLister al
 // (i.e. it returns true IFF this pod can be added to this node such that all other pods in
 // the same service are running on nodes with
 // the exact same ServiceAffinity.label values).
+//
+// For example:
+// If the first pod of a service was scheduled to a node with label "region=foo",
+// all the other subsequent pods belong to the same service will be schedule on
+// nodes with the same "region=foo" label.
 //
 // Details:
 //

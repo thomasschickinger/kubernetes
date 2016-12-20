@@ -4,10 +4,8 @@ licenses(["notice"])
 
 load(
     "@io_bazel_rules_go//go:def.bzl",
-    "go_binary",
     "go_library",
     "go_test",
-    "cgo_library",
 )
 
 go_library(
@@ -31,7 +29,7 @@ go_library(
         "//pkg/api/v1:go_default_library",
         "//pkg/api/validation:go_default_library",
         "//pkg/apis/storage/util:go_default_library",
-        "//pkg/client/clientset_generated/release_1_5:go_default_library",
+        "//pkg/client/clientset_generated/clientset:go_default_library",
         "//pkg/controller/informers:go_default_library",
         "//pkg/kubelet/qos:go_default_library",
         "//pkg/quota:go_default_library",
@@ -57,7 +55,7 @@ go_test(
         "//pkg/api/resource:go_default_library",
         "//pkg/apis/meta/v1:go_default_library",
         "//pkg/apis/storage/util:go_default_library",
-        "//pkg/client/clientset_generated/release_1_5/fake:go_default_library",
+        "//pkg/client/clientset_generated/clientset/fake:go_default_library",
         "//pkg/quota:go_default_library",
     ],
 )

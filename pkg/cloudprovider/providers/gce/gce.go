@@ -63,8 +63,9 @@ const (
 	// AffinityTypeClientIPProto - affinity based on Client IP and port.
 	gceAffinityTypeClientIPProto = "CLIENT_IP_PROTO"
 
-	operationPollInterval        = 3 * time.Second
-	operationPollTimeoutDuration = 30 * time.Minute
+	operationPollInterval = 3 * time.Second
+	// Creating Route in very large clusters, may take more than half an hour.
+	operationPollTimeoutDuration = time.Hour
 
 	// Each page can have 500 results, but we cap how many pages
 	// are iterated through to prevent infinite loops if the API
@@ -2399,7 +2400,12 @@ func (gce *GCECloud) CreateRoute(clusterName string, nameHint string, route *clo
 		Description:     k8sNodeRouteTag,
 	}).Do()
 	if err != nil {
-		return err
+		if isHTTPErrorCode(err, http.StatusConflict) {
+			glog.Info("Route %v already exists.")
+			return nil
+		} else {
+			return err
+		}
 	}
 	return gce.waitForGlobalOp(insertOp)
 }

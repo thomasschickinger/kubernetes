@@ -37,7 +37,7 @@ import (
 	"k8s.io/kubernetes/pkg/apis/componentconfig"
 	componentconfigv1alpha1 "k8s.io/kubernetes/pkg/apis/componentconfig/v1alpha1"
 	"k8s.io/kubernetes/pkg/client/cache"
-	clientset "k8s.io/kubernetes/pkg/client/clientset_generated/release_1_5"
+	clientset "k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
 	"k8s.io/kubernetes/pkg/client/record"
 	"k8s.io/kubernetes/pkg/cloudprovider"
 	"k8s.io/kubernetes/pkg/fields"
@@ -1443,7 +1443,7 @@ func (kl *Kubelet) syncPod(o syncPodOptions) error {
 	}
 
 	// If the network plugin is not ready, only start the pod if it uses the host network
-	if rs := kl.runtimeState.networkErrors(); len(rs) != 0 && !podUsesHostNetwork(pod) {
+	if rs := kl.runtimeState.networkErrors(); len(rs) != 0 && !kubecontainer.IsHostNetworkPod(pod) {
 		return fmt.Errorf("network is not ready: %v", rs)
 	}
 
@@ -1548,7 +1548,7 @@ func (kl *Kubelet) syncPod(o syncPodOptions) error {
 		return err
 	}
 	if egress != nil || ingress != nil {
-		if podUsesHostNetwork(pod) {
+		if kubecontainer.IsHostNetworkPod(pod) {
 			kl.recorder.Event(pod, v1.EventTypeWarning, events.HostNetworkNotSupported, "Bandwidth shaping is not currently supported on the host network")
 		} else if kl.shaper != nil {
 			if len(apiPodStatus.PodIP) > 0 {
@@ -1909,8 +1909,21 @@ func (kl *Kubelet) handleMirrorPod(mirrorPod *v1.Pod, start time.Time) {
 // a config source.
 func (kl *Kubelet) HandlePodAdditions(pods []*v1.Pod) {
 	start := kl.clock.Now()
-	sort.Sort(sliceutils.PodsByCreationTime(pods))
-	for _, pod := range pods {
+
+	// Pass critical pods through admission check first.
+	var criticalPods []*v1.Pod
+	var nonCriticalPods []*v1.Pod
+	for _, p := range pods {
+		if kubepod.IsCriticalPod(p) {
+			criticalPods = append(criticalPods, p)
+		} else {
+			nonCriticalPods = append(nonCriticalPods, p)
+		}
+	}
+	sort.Sort(sliceutils.PodsByCreationTime(criticalPods))
+	sort.Sort(sliceutils.PodsByCreationTime(nonCriticalPods))
+
+	for _, pod := range append(criticalPods, nonCriticalPods...) {
 		existingPods := kl.podManager.GetPods()
 		// Always add the pod to the pod manager. Kubelet relies on the pod
 		// manager as the source of truth for the desired state. If a pod does

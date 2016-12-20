@@ -376,7 +376,7 @@ func (c *Cacher) Get(ctx context.Context, key string, resourceVersion string, ob
 
 	obj, exists, readResourceVersion, err := c.watchCache.WaitUntilFreshAndGet(getRV, key, nil)
 	if err != nil {
-		return fmt.Errorf("failed to wait for fresh get: %v", err)
+		return err
 	}
 
 	if exists {
@@ -429,7 +429,7 @@ func (c *Cacher) GetToList(ctx context.Context, key string, resourceVersion stri
 
 	obj, exists, readResourceVersion, err := c.watchCache.WaitUntilFreshAndGet(listRV, key, trace)
 	if err != nil {
-		return fmt.Errorf("failed to wait for fresh get: %v", err)
+		return err
 	}
 	trace.Step("Got from cache")
 
@@ -485,7 +485,7 @@ func (c *Cacher) List(ctx context.Context, key string, resourceVersion string, p
 
 	objs, readResourceVersion, err := c.watchCache.WaitUntilFreshAndList(listRV, trace)
 	if err != nil {
-		return fmt.Errorf("failed to wait for fresh list: %v", err)
+		return err
 	}
 	trace.Step(fmt.Sprintf("Listed %d items from cache", len(objs)))
 	if len(objs) > listVal.Cap() && pred.Label.Empty() && pred.Field.Empty() {
@@ -557,12 +557,12 @@ func (c *Cacher) triggerValues(event *watchCacheEvent) ([]string, bool) {
 	return result, len(result) > 0
 }
 
-func (c *Cacher) processEvent(event watchCacheEvent) {
+func (c *Cacher) processEvent(event *watchCacheEvent) {
 	if curLen := int64(len(c.incoming)); c.incomingHWM.Update(curLen) {
 		// Monitor if this gets backed up, and how much.
 		glog.V(1).Infof("cacher (%v): %v objects queued in incoming channel.", c.objectType.String(), curLen)
 	}
-	c.incoming <- event
+	c.incoming <- *event
 }
 
 func (c *Cacher) dispatchEvents() {
@@ -750,15 +750,17 @@ type cacheWatcher struct {
 	sync.Mutex
 	input   chan watchCacheEvent
 	result  chan watch.Event
+	done    chan struct{}
 	filter  watchFilterFunc
 	stopped bool
 	forget  func(bool)
 }
 
-func newCacheWatcher(resourceVersion uint64, chanSize int, initEvents []watchCacheEvent, filter watchFilterFunc, forget func(bool)) *cacheWatcher {
+func newCacheWatcher(resourceVersion uint64, chanSize int, initEvents []*watchCacheEvent, filter watchFilterFunc, forget func(bool)) *cacheWatcher {
 	watcher := &cacheWatcher{
 		input:   make(chan watchCacheEvent, chanSize),
 		result:  make(chan watch.Event, chanSize),
+		done:    make(chan struct{}),
 		filter:  filter,
 		stopped: false,
 		forget:  forget,
@@ -783,6 +785,7 @@ func (c *cacheWatcher) stop() {
 	defer c.Unlock()
 	if !c.stopped {
 		c.stopped = true
+		close(c.done)
 		close(c.input)
 	}
 }
@@ -847,17 +850,23 @@ func (c *cacheWatcher) sendWatchCacheEvent(event *watchCacheEvent) {
 		glog.Errorf("unexpected copy error: %v", err)
 		return
 	}
+	var watchEvent watch.Event
 	switch {
 	case curObjPasses && !oldObjPasses:
-		c.result <- watch.Event{Type: watch.Added, Object: object}
+		watchEvent = watch.Event{Type: watch.Added, Object: object}
 	case curObjPasses && oldObjPasses:
-		c.result <- watch.Event{Type: watch.Modified, Object: object}
+		watchEvent = watch.Event{Type: watch.Modified, Object: object}
 	case !curObjPasses && oldObjPasses:
-		c.result <- watch.Event{Type: watch.Deleted, Object: object}
+		watchEvent = watch.Event{Type: watch.Deleted, Object: object}
+	}
+	select {
+	case c.result <- watchEvent:
+	// don't block on c.result if c.done is closed
+	case <-c.done:
 	}
 }
 
-func (c *cacheWatcher) process(initEvents []watchCacheEvent, resourceVersion uint64) {
+func (c *cacheWatcher) process(initEvents []*watchCacheEvent, resourceVersion uint64) {
 	defer utilruntime.HandleCrash()
 
 	// Check how long we are processing initEvents.
@@ -876,7 +885,7 @@ func (c *cacheWatcher) process(initEvents []watchCacheEvent, resourceVersion uin
 	const initProcessThreshold = 500 * time.Millisecond
 	startTime := time.Now()
 	for _, event := range initEvents {
-		c.sendWatchCacheEvent(&event)
+		c.sendWatchCacheEvent(event)
 	}
 	processingTime := time.Since(startTime)
 	if processingTime > initProcessThreshold {

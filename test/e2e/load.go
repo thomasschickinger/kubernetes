@@ -29,9 +29,10 @@ import (
 
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/v1"
+	"k8s.io/kubernetes/pkg/apis/batch"
 	"k8s.io/kubernetes/pkg/apis/extensions"
+	clientset "k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
-	clientset "k8s.io/kubernetes/pkg/client/clientset_generated/release_1_5"
 	"k8s.io/kubernetes/pkg/client/restclient"
 	"k8s.io/kubernetes/pkg/client/transport"
 	"k8s.io/kubernetes/pkg/labels"
@@ -394,6 +395,8 @@ func generateConfigsForGroup(
 			config = &testutils.ReplicaSetConfig{RCConfig: *baseConfig}
 		case extensions.Kind("Deployment"):
 			config = &testutils.DeploymentConfig{RCConfig: *baseConfig}
+		case batch.Kind("Job"):
+			config = &testutils.JobConfig{RCConfig: *baseConfig}
 		default:
 			framework.Failf("Unsupported kind for config creation: %v", kind)
 		}
