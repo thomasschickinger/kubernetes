@@ -16,7 +16,6 @@ go_library(
     ],
     tags = ["automanaged"],
     deps = [
-        "//pkg/api:go_default_library",
         "//pkg/api/errors:go_default_library",
         "//pkg/api/v1:go_default_library",
         "//pkg/apis/extensions/v1beta1:go_default_library",
@@ -25,6 +24,7 @@ go_library(
         "//pkg/client/clientset_generated/clientset:go_default_library",
         "//pkg/controller/informers:go_default_library",
         "//pkg/fields:go_default_library",
+        "//pkg/genericapiserver/api/request:go_default_library",
         "//pkg/types:go_default_library",
         "//pkg/util/runtime:go_default_library",
         "//pkg/util/sets:go_default_library",
@@ -46,7 +46,7 @@ go_test(
         "factory_test.go",
         "plugins_test.go",
     ],
-    library = "go_default_library",
+    library = ":go_default_library",
     tags = ["automanaged"],
     deps = [
         "//pkg/api/testapi:go_default_library",
@@ -64,4 +64,17 @@ go_test(
         "//plugin/pkg/scheduler/api/latest:go_default_library",
         "//plugin/pkg/scheduler/schedulercache:go_default_library",
     ],
+)
+
+filegroup(
+    name = "package-srcs",
+    srcs = glob(["**"]),
+    tags = ["automanaged"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "all-srcs",
+    srcs = [":package-srcs"],
+    tags = ["automanaged"],
 )

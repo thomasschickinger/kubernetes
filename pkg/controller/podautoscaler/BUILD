@@ -43,7 +43,7 @@ go_test(
         "horizontal_test.go",
         "replica_calculator_test.go",
     ],
-    library = "go_default_library",
+    library = ":go_default_library",
     tags = ["automanaged"],
     deps = [
         "//pkg/api/resource:go_default_library",
@@ -66,4 +66,20 @@ go_test(
         "//vendor:k8s.io/heapster/metrics/api/v1/types",
         "//vendor:k8s.io/heapster/metrics/apis/metrics/v1alpha1",
     ],
+)
+
+filegroup(
+    name = "package-srcs",
+    srcs = glob(["**"]),
+    tags = ["automanaged"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "all-srcs",
+    srcs = [
+        ":package-srcs",
+        "//pkg/controller/podautoscaler/metrics:all-srcs",
+    ],
+    tags = ["automanaged"],
 )

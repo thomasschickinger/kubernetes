@@ -16,8 +16,7 @@
 
 KUBE_ROOT=$(dirname "${BASH_SOURCE}")/..
 
-# This command builds and runs a local kubernetes cluster. It's just like
-# local-up.sh, but this one launches the three separate binaries.
+# This command builds and runs a local kubernetes cluster.
 # You may need to run this as root to allow kubelet to open docker's socket,
 # and to write the test CA in /var/run/kubernetes.
 DOCKER_OPTS=${DOCKER_OPTS:-""}
@@ -78,7 +77,7 @@ if [ "${CLOUD_PROVIDER}" == "openstack" ]; then
         exit 1
     fi
     if [ ! -f "${CLOUD_CONFIG}" ]; then
-        echo "Cloud config ${CLOUD_CONFIG} doesn't exit"
+        echo "Cloud config ${CLOUD_CONFIG} doesn't exist"
         exit 1
     fi
 fi
@@ -633,6 +632,13 @@ function start_kubedns {
     fi
 }
 
+function create_psp_policy {
+    echo "Create podsecuritypolicy policies for RBAC."
+    ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" create -f ${KUBE_ROOT}/examples/podsecuritypolicy/rbac/policies.yaml
+    ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" create -f ${KUBE_ROOT}/examples/podsecuritypolicy/rbac/roles.yaml
+    ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" create -f ${KUBE_ROOT}/examples/podsecuritypolicy/rbac/bindings.yaml
+}
+
 function print_success {
 if [[ "${START_MODE}" != "kubeletonly" ]]; then
   cat <<EOF
@@ -718,6 +724,10 @@ fi
 
 if [[ "${START_MODE}" != "nokubelet" ]]; then
   start_kubelet
+fi
+
+if [[ -n "${PSP_ADMISSION}" && "${ENABLE_RBAC}" = true ]]; then
+    create_psp_policy
 fi
 
 print_success

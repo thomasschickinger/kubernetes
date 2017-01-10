@@ -38,10 +38,29 @@ go_test(
         "atomic_writer_test.go",
         "device_util_linux_test.go",
     ],
-    library = "go_default_library",
+    library = ":go_default_library",
     tags = ["automanaged"],
     deps = [
         "//pkg/util/sets:go_default_library",
         "//pkg/util/testing:go_default_library",
     ],
+)
+
+filegroup(
+    name = "package-srcs",
+    srcs = glob(["**"]),
+    tags = ["automanaged"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "all-srcs",
+    srcs = [
+        ":package-srcs",
+        "//pkg/volume/util/nestedpendingoperations:all-srcs",
+        "//pkg/volume/util/operationexecutor:all-srcs",
+        "//pkg/volume/util/types:all-srcs",
+        "//pkg/volume/util/volumehelper:all-srcs",
+    ],
+    tags = ["automanaged"],
 )

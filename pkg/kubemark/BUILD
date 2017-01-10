@@ -19,6 +19,7 @@ go_library(
         "//cmd/kube-proxy/app/options:go_default_library",
         "//cmd/kubelet/app:go_default_library",
         "//pkg/api:go_default_library",
+        "//pkg/api/v1:go_default_library",
         "//pkg/apis/componentconfig:go_default_library",
         "//pkg/apis/componentconfig/v1alpha1:go_default_library",
         "//pkg/client/clientset_generated/clientset:go_default_library",
@@ -42,4 +43,17 @@ go_library(
         "//test/utils:go_default_library",
         "//vendor:github.com/golang/glog",
     ],
+)
+
+filegroup(
+    name = "package-srcs",
+    srcs = glob(["**"]),
+    tags = ["automanaged"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "all-srcs",
+    srcs = [":package-srcs"],
+    tags = ["automanaged"],
 )

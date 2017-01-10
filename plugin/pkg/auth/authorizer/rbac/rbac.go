@@ -18,10 +18,13 @@ limitations under the License.
 package rbac
 
 import (
+	"fmt"
+	"github.com/golang/glog"
+
+	"k8s.io/apiserver/pkg/authentication/user"
+	"k8s.io/apiserver/pkg/authorization/authorizer"
 	"k8s.io/kubernetes/pkg/apis/rbac"
 	"k8s.io/kubernetes/pkg/apis/rbac/validation"
-	"k8s.io/kubernetes/pkg/auth/authorizer"
-	"k8s.io/kubernetes/pkg/auth/user"
 )
 
 type RequestToRuleMapper interface {
@@ -42,7 +45,14 @@ func (r *RBACAuthorizer) Authorize(requestAttributes authorizer.Attributes) (boo
 		return true, "", nil
 	}
 
-	return false, "", ruleResolutionError
+	glog.V(2).Infof("RBAC DENY: user %q groups %v cannot %q on \"%v.%v/%v\"", requestAttributes.GetUser().GetName(), requestAttributes.GetUser().GetGroups(),
+		requestAttributes.GetVerb(), requestAttributes.GetResource(), requestAttributes.GetAPIGroup(), requestAttributes.GetSubresource())
+
+	reason := ""
+	if ruleResolutionError != nil {
+		reason = fmt.Sprintf("%v", ruleResolutionError)
+	}
+	return false, reason, nil
 }
 
 func New(roles validation.RoleGetter, roleBindings validation.RoleBindingLister, clusterRoles validation.ClusterRoleGetter, clusterRoleBindings validation.ClusterRoleBindingLister) *RBACAuthorizer {

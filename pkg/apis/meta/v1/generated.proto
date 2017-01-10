@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors.
+Copyright 2017 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -444,5 +444,19 @@ message Verbs {
   // items, if empty, will result in an empty slice
 
   repeated string items = 1;
+}
+
+// Event represents a single event to a watched resource.
+// 
+// +protobuf=true
+message WatchEvent {
+  optional string type = 1;
+
+  // Object is:
+  //  * If Type is Added or Modified: the new state of the object.
+  //  * If Type is Deleted: the state of the object immediately before deletion.
+  //  * If Type is Error: *Status is recommended; other types may make sense
+  //    depending on context.
+  optional k8s.io.kubernetes.pkg.runtime.RawExtension object = 2;
 }
 

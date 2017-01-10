@@ -42,7 +42,7 @@ go_test(
         "store_test.go",
         "watcher_test.go",
     ],
-    library = "go_default_library",
+    library = ":go_default_library",
     tags = ["automanaged"],
     deps = [
         "//pkg/api:go_default_library",
@@ -60,4 +60,17 @@ go_test(
         "//vendor:github.com/coreos/etcd/integration",
         "//vendor:golang.org/x/net/context",
     ],
+)
+
+filegroup(
+    name = "package-srcs",
+    srcs = glob(["**"]),
+    tags = ["automanaged"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "all-srcs",
+    srcs = [":package-srcs"],
+    tags = ["automanaged"],
 )

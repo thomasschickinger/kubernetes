@@ -25,9 +25,6 @@ go_library(
         "//pkg/apis/componentconfig:go_default_library",
         "//pkg/apis/componentconfig/v1alpha1:go_default_library",
         "//pkg/apis/meta/v1:go_default_library",
-        "//pkg/apiserver/authenticator:go_default_library",
-        "//pkg/auth/authenticator:go_default_library",
-        "//pkg/auth/authorizer:go_default_library",
         "//pkg/capabilities:go_default_library",
         "//pkg/client/chaosclient:go_default_library",
         "//pkg/client/clientset_generated/clientset:go_default_library",
@@ -46,8 +43,8 @@ go_library(
         "//pkg/credentialprovider/aws:go_default_library",
         "//pkg/credentialprovider/azure:go_default_library",
         "//pkg/credentialprovider/gcp:go_default_library",
+        "//pkg/genericapiserver/authenticator:go_default_library",
         "//pkg/genericapiserver/authorizer:go_default_library",
-        "//pkg/healthz:go_default_library",
         "//pkg/kubelet:go_default_library",
         "//pkg/kubelet/cadvisor:go_default_library",
         "//pkg/kubelet/cm:go_default_library",
@@ -56,7 +53,6 @@ go_library(
         "//pkg/kubelet/dockertools:go_default_library",
         "//pkg/kubelet/network:go_default_library",
         "//pkg/kubelet/network/cni:go_default_library",
-        "//pkg/kubelet/network/exec:go_default_library",
         "//pkg/kubelet/network/kubenet:go_default_library",
         "//pkg/kubelet/server:go_default_library",
         "//pkg/kubelet/types:go_default_library",
@@ -102,6 +98,9 @@ go_library(
         "//vendor:github.com/spf13/cobra",
         "//vendor:github.com/spf13/pflag",
         "//vendor:golang.org/x/exp/inotify",
+        "//vendor:k8s.io/apiserver/pkg/authentication/authenticator",
+        "//vendor:k8s.io/apiserver/pkg/authorization/authorizer",
+        "//vendor:k8s.io/apiserver/pkg/healthz",
     ],
 )
 
@@ -111,7 +110,7 @@ go_test(
         "bootstrap_test.go",
         "server_test.go",
     ],
-    library = "go_default_library",
+    library = ":go_default_library",
     tags = ["automanaged"],
     deps = [
         "//pkg/client/restclient:go_default_library",
@@ -119,4 +118,20 @@ go_test(
         "//pkg/util/config:go_default_library",
         "//pkg/util/diff:go_default_library",
     ],
+)
+
+filegroup(
+    name = "package-srcs",
+    srcs = glob(["**"]),
+    tags = ["automanaged"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "all-srcs",
+    srcs = [
+        ":package-srcs",
+        "//cmd/kubelet/app/options:all-srcs",
+    ],
+    tags = ["automanaged"],
 )

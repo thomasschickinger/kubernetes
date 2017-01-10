@@ -21,7 +21,6 @@ go_library(
         "//pkg/apis/autoscaling:go_default_library",
         "//pkg/apis/batch:go_default_library",
         "//pkg/apis/extensions:go_default_library",
-        "//pkg/apiserver/authenticator:go_default_library",
         "//pkg/capabilities:go_default_library",
         "//pkg/client/clientset_generated/internalclientset:go_default_library",
         "//pkg/cloudprovider:go_default_library",
@@ -30,8 +29,9 @@ go_library(
         "//pkg/controller/serviceaccount:go_default_library",
         "//pkg/generated/openapi:go_default_library",
         "//pkg/genericapiserver:go_default_library",
-        "//pkg/genericapiserver/authorizer:go_default_library",
         "//pkg/genericapiserver/filters:go_default_library",
+        "//pkg/kubeapiserver/admission:go_default_library",
+        "//pkg/kubeapiserver/authenticator:go_default_library",
         "//pkg/master:go_default_library",
         "//pkg/registry/cachesize:go_default_library",
         "//pkg/runtime/schema:go_default_library",
@@ -64,4 +64,20 @@ go_library(
         "//vendor:github.com/spf13/cobra",
         "//vendor:github.com/spf13/pflag",
     ],
+)
+
+filegroup(
+    name = "package-srcs",
+    srcs = glob(["**"]),
+    tags = ["automanaged"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "all-srcs",
+    srcs = [
+        ":package-srcs",
+        "//cmd/kube-apiserver/app/options:all-srcs",
+    ],
+    tags = ["automanaged"],
 )

@@ -335,6 +335,15 @@ func (dc *DeploymentController) getNewReplicaSet(deployment *extensions.Deployme
 			Template:        newRSTemplate,
 		},
 	}
+	var trueVar = true
+	controllerRef := &metav1.OwnerReference{
+		APIVersion: getDeploymentKind().GroupVersion().String(),
+		Kind:       getDeploymentKind().Kind,
+		Name:       deployment.Name,
+		UID:        deployment.UID,
+		Controller: &trueVar,
+	}
+	newRS.OwnerReferences = append(newRS.OwnerReferences, *controllerRef)
 	allRSs := append(oldRSs, &newRS)
 	newReplicasCount, err := deploymentutil.NewRSNewReplicas(deployment, allRSs, &newRS)
 	if err != nil {
@@ -586,6 +595,7 @@ func calculateStatus(allRSs []*extensions.ReplicaSet, newRS *extensions.ReplicaS
 		ObservedGeneration:  deployment.Generation,
 		Replicas:            deploymentutil.GetActualReplicaCountForReplicaSets(allRSs),
 		UpdatedReplicas:     deploymentutil.GetActualReplicaCountForReplicaSets([]*extensions.ReplicaSet{newRS}),
+		ReadyReplicas:       deploymentutil.GetReadyReplicaCountForReplicaSets(allRSs),
 		AvailableReplicas:   availableReplicas,
 		UnavailableReplicas: unavailableReplicas,
 	}

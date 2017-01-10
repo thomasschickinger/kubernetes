@@ -21,10 +21,28 @@ go_library(
         "//pkg/genericapiserver:go_default_library",
         "//pkg/genericapiserver/authorizer:go_default_library",
         "//pkg/genericapiserver/options:go_default_library",
+        "//pkg/kubeapiserver/options:go_default_library",
         "//pkg/registry/generic:go_default_library",
         "//pkg/runtime/schema:go_default_library",
         "//pkg/storage/storagebackend:go_default_library",
         "//pkg/util/errors:go_default_library",
         "//vendor:github.com/golang/glog",
     ],
+)
+
+filegroup(
+    name = "package-srcs",
+    srcs = glob(["**"]),
+    tags = ["automanaged"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "all-srcs",
+    srcs = [
+        ":package-srcs",
+        "//examples/apiserver/rest:all-srcs",
+        "//examples/apiserver/server:all-srcs",
+    ],
+    tags = ["automanaged"],
 )

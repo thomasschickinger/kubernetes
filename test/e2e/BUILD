@@ -5,7 +5,6 @@ licenses(["notice"])
 load(
     "@io_bazel_rules_go//go:def.bzl",
     "go_library",
-    "go_test",
 )
 
 go_library(
@@ -80,6 +79,7 @@ go_library(
         "opaque_resource.go",
         "pd.go",
         "persistent_volumes.go",
+        "persistent_volumes-disruptive.go",
         "petset.go",
         "pod_gc.go",
         "pods.go",
@@ -128,6 +128,7 @@ go_library(
         "//pkg/apis/extensions:go_default_library",
         "//pkg/apis/extensions/v1beta1:go_default_library",
         "//pkg/apis/meta/v1:go_default_library",
+        "//pkg/apis/rbac/v1alpha1:go_default_library",
         "//pkg/apis/storage/util:go_default_library",
         "//pkg/apis/storage/v1beta1:go_default_library",
         "//pkg/apis/storage/v1beta1/util:go_default_library",
@@ -140,6 +141,7 @@ go_library(
         "//pkg/client/transport:go_default_library",
         "//pkg/client/unversioned/clientcmd:go_default_library",
         "//pkg/client/unversioned/clientcmd/api:go_default_library",
+        "//pkg/cloudprovider:go_default_library",
         "//pkg/cloudprovider/providers/aws:go_default_library",
         "//pkg/cloudprovider/providers/gce:go_default_library",
         "//pkg/controller:go_default_library",
@@ -149,7 +151,6 @@ go_library(
         "//pkg/controller/petset:go_default_library",
         "//pkg/controller/replicaset:go_default_library",
         "//pkg/controller/replication:go_default_library",
-        "//pkg/dns/federation:go_default_library",
         "//pkg/fields:go_default_library",
         "//pkg/kubectl:go_default_library",
         "//pkg/kubectl/cmd/util:go_default_library",
@@ -163,6 +164,7 @@ go_library(
         "//pkg/runtime:go_default_library",
         "//pkg/runtime/schema:go_default_library",
         "//pkg/security/apparmor:go_default_library",
+        "//pkg/serviceaccount:go_default_library",
         "//pkg/types:go_default_library",
         "//pkg/util:go_default_library",
         "//pkg/util/exec:go_default_library",
@@ -225,7 +227,7 @@ go_library(
         "e2e_test.go",
         "metrics_grabber_test.go",
     ],
-    library = "go_default_library",
+    library = ":go_default_library",
     tags = ["automanaged"],
     visibility = ["//visibility:private"],
     deps = [
@@ -236,4 +238,25 @@ go_library(
         "//vendor:github.com/onsi/ginkgo",
         "//vendor:github.com/onsi/gomega",
     ],
+)
+
+filegroup(
+    name = "package-srcs",
+    srcs = glob(["**"]),
+    tags = ["automanaged"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "all-srcs",
+    srcs = [
+        ":package-srcs",
+        "//test/e2e/chaosmonkey:all-srcs",
+        "//test/e2e/common:all-srcs",
+        "//test/e2e/framework:all-srcs",
+        "//test/e2e/generated:all-srcs",
+        "//test/e2e/perftype:all-srcs",
+        "//test/e2e/testing-manifests:all-srcs",
+    ],
+    tags = ["automanaged"],
 )

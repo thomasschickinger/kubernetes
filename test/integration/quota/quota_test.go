@@ -31,11 +31,14 @@ import (
 	"k8s.io/kubernetes/pkg/apimachinery/registered"
 	clientset "k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
+	"k8s.io/kubernetes/pkg/client/record"
 	"k8s.io/kubernetes/pkg/client/restclient"
 	"k8s.io/kubernetes/pkg/controller"
+	"k8s.io/kubernetes/pkg/controller/informers"
 	replicationcontroller "k8s.io/kubernetes/pkg/controller/replication"
 	resourcequotacontroller "k8s.io/kubernetes/pkg/controller/resourcequota"
 	"k8s.io/kubernetes/pkg/fields"
+	kubeadmission "k8s.io/kubernetes/pkg/kubeapiserver/admission"
 	"k8s.io/kubernetes/pkg/labels"
 	quotainstall "k8s.io/kubernetes/pkg/quota/install"
 	"k8s.io/kubernetes/pkg/runtime/schema"
@@ -62,10 +65,11 @@ func TestQuota(t *testing.T) {
 	admissionCh := make(chan struct{})
 	clientset := clientset.NewForConfigOrDie(&restclient.Config{QPS: -1, Host: s.URL, ContentConfig: restclient.ContentConfig{GroupVersion: &registered.GroupOrDie(v1.GroupName).GroupVersion}})
 	internalClientset := internalclientset.NewForConfigOrDie(&restclient.Config{QPS: -1, Host: s.URL, ContentConfig: restclient.ContentConfig{GroupVersion: &registered.GroupOrDie(v1.GroupName).GroupVersion}})
-	admission, err := resourcequota.NewResourceQuota(internalClientset, quotainstall.NewRegistry(nil, nil), 5, admissionCh)
+	admission, err := resourcequota.NewResourceQuota(quotainstall.NewRegistry(nil, nil), 5, admissionCh)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
+	admission.(kubeadmission.WantsInternalClientSet).SetInternalClientSet(internalClientset)
 	defer close(admissionCh)
 
 	masterConfig := framework.NewIntegrationTestMasterConfig()
@@ -80,8 +84,13 @@ func TestQuota(t *testing.T) {
 	controllerCh := make(chan struct{})
 	defer close(controllerCh)
 
-	go replicationcontroller.NewReplicationManagerFromClientForIntegration(clientset, controller.NoResyncPeriodFunc, replicationcontroller.BurstReplicas, 4096).
-		Run(3, controllerCh)
+	informers := informers.NewSharedInformerFactory(clientset, nil, controller.NoResyncPeriodFunc())
+	podInformer := informers.Pods().Informer()
+	rcInformer := informers.ReplicationControllers().Informer()
+	rm := replicationcontroller.NewReplicationManager(podInformer, rcInformer, clientset, replicationcontroller.BurstReplicas, 4096, false)
+	rm.SetEventRecorder(&record.FakeRecorder{})
+	informers.Start(controllerCh)
+	go rm.Run(3, controllerCh)
 
 	resourceQuotaRegistry := quotainstall.NewRegistry(clientset, nil)
 	groupKindsToReplenish := []schema.GroupKind{

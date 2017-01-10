@@ -36,26 +36,26 @@ import (
 	"github.com/pborman/uuid"
 	"gopkg.in/natefinch/lumberjack.v2"
 
+	"k8s.io/apiserver/pkg/authentication/authenticator"
+	"k8s.io/apiserver/pkg/authentication/user"
+	"k8s.io/apiserver/pkg/authorization/authorizer"
+	"k8s.io/apiserver/pkg/healthz"
 	"k8s.io/kubernetes/pkg/admission"
 	"k8s.io/kubernetes/pkg/api"
 	metav1 "k8s.io/kubernetes/pkg/apis/meta/v1"
-	apiserverauthenticator "k8s.io/kubernetes/pkg/apiserver/authenticator"
-	apiserverfilters "k8s.io/kubernetes/pkg/apiserver/filters"
-	apiserveropenapi "k8s.io/kubernetes/pkg/apiserver/openapi"
-	apiserverrequest "k8s.io/kubernetes/pkg/apiserver/request"
-	"k8s.io/kubernetes/pkg/auth/authenticator"
-	"k8s.io/kubernetes/pkg/auth/authorizer"
 	authorizerunion "k8s.io/kubernetes/pkg/auth/authorizer/union"
 	authhandlers "k8s.io/kubernetes/pkg/auth/handlers"
-	"k8s.io/kubernetes/pkg/auth/user"
 	"k8s.io/kubernetes/pkg/client/restclient"
-	apiserverauthorizer "k8s.io/kubernetes/pkg/genericapiserver/authorizer"
+	genericapifilters "k8s.io/kubernetes/pkg/genericapiserver/api/filters"
+	apiopenapi "k8s.io/kubernetes/pkg/genericapiserver/api/openapi"
+	apirequest "k8s.io/kubernetes/pkg/genericapiserver/api/request"
+	genericauthenticator "k8s.io/kubernetes/pkg/genericapiserver/authenticator"
+	genericauthorizer "k8s.io/kubernetes/pkg/genericapiserver/authorizer"
 	genericfilters "k8s.io/kubernetes/pkg/genericapiserver/filters"
 	"k8s.io/kubernetes/pkg/genericapiserver/mux"
 	openapicommon "k8s.io/kubernetes/pkg/genericapiserver/openapi/common"
 	"k8s.io/kubernetes/pkg/genericapiserver/options"
 	"k8s.io/kubernetes/pkg/genericapiserver/routes"
-	"k8s.io/kubernetes/pkg/healthz"
 	"k8s.io/kubernetes/pkg/runtime"
 	certutil "k8s.io/kubernetes/pkg/util/cert"
 	"k8s.io/kubernetes/pkg/util/sets"
@@ -126,7 +126,7 @@ type Config struct {
 	LegacyAPIGroupPrefixes sets.String
 	// RequestContextMapper maps requests to contexts. Exported so downstream consumers can provider their own mappers
 	// TODO confirm that anyone downstream actually uses this and doesn't just need an accessor
-	RequestContextMapper api.RequestContextMapper
+	RequestContextMapper apirequest.RequestContextMapper
 	// Serializer is required and provides the interface for serializing and converting objects to and from the wire
 	// The default (api.Codecs) usually works fine.
 	Serializer runtime.NegotiatedSerializer
@@ -195,7 +195,7 @@ func NewConfig() *Config {
 	config := &Config{
 		Serializer:             api.Codecs,
 		ReadWritePort:          6443,
-		RequestContextMapper:   api.NewRequestContextMapper(),
+		RequestContextMapper:   apirequest.NewRequestContextMapper(),
 		BuildHandlerChainsFunc: DefaultBuildHandlerChain,
 		LegacyAPIGroupPrefixes: sets.NewString(DefaultLegacyAPIPrefix),
 		HealthzChecks:          []healthz.HealthzChecker{healthz.PingHealthz},
@@ -229,7 +229,7 @@ func DefaultOpenAPIConfig(definitions *openapicommon.OpenAPIDefinitions) *openap
 				Description: "Default Response.",
 			},
 		},
-		GetOperationIDAndTags: apiserveropenapi.GetOperationIDAndTags,
+		GetOperationIDAndTags: apiopenapi.GetOperationIDAndTags,
 		Definitions:           definitions,
 	}
 }
@@ -327,30 +327,7 @@ func (c *Config) ApplyInsecureServingOptions(insecureServing *options.ServingOpt
 	return c
 }
 
-func (c *Config) ApplyAuthenticationOptions(o *options.BuiltInAuthenticationOptions) (*Config, error) {
-	if o == nil || o.PasswordFile == nil {
-		return c, nil
-	}
-
-	var err error
-	if o.ClientCert != nil {
-		c, err = c.applyClientCert(o.ClientCert.ClientCA)
-		if err != nil {
-			return nil, fmt.Errorf("unable to load client CA file: %v", err)
-		}
-	}
-	if o.RequestHeader != nil {
-		c, err = c.applyClientCert(o.RequestHeader.ClientCAFile)
-		if err != nil {
-			return nil, fmt.Errorf("unable to load client CA file: %v", err)
-		}
-	}
-
-	c.SupportsBasicAuth = len(o.PasswordFile.BasicAuthFile) > 0
-	return c, nil
-}
-
-func (c *Config) applyClientCert(clientCAFile string) (*Config, error) {
+func (c *Config) ApplyClientCert(clientCAFile string) (*Config, error) {
 	if c.SecureServingInfo != nil {
 		if len(clientCAFile) > 0 {
 			clientCAs, err := certutil.CertsFromFile(clientCAFile)
@@ -375,11 +352,11 @@ func (c *Config) ApplyDelegatingAuthenticationOptions(o *options.DelegatingAuthe
 	}
 
 	var err error
-	c, err = c.applyClientCert(o.ClientCert.ClientCA)
+	c, err = c.ApplyClientCert(o.ClientCert.ClientCA)
 	if err != nil {
 		return nil, fmt.Errorf("unable to load client CA file: %v", err)
 	}
-	c, err = c.applyClientCert(o.RequestHeader.ClientCAFile)
+	c, err = c.ApplyClientCert(o.RequestHeader.ClientCAFile)
 	if err != nil {
 		return nil, fmt.Errorf("unable to load client CA file: %v", err)
 	}
@@ -505,10 +482,10 @@ func (c *Config) Complete() completedConfig {
 			Groups: []string{user.SystemPrivilegedGroup},
 		}
 
-		tokenAuthenticator := apiserverauthenticator.NewAuthenticatorFromTokens(tokens)
+		tokenAuthenticator := genericauthenticator.NewAuthenticatorFromTokens(tokens)
 		c.Authenticator = authenticatorunion.New(tokenAuthenticator, c.Authenticator)
 
-		tokenAuthorizer := apiserverauthorizer.NewPrivilegedGroups(user.SystemPrivilegedGroup)
+		tokenAuthorizer := genericauthorizer.NewPrivilegedGroups(user.SystemPrivilegedGroup)
 		c.Authorizer = authorizerunion.New(tokenAuthorizer, c.Authorizer)
 	}
 
@@ -585,16 +562,16 @@ func DefaultBuildHandlerChain(apiHandler http.Handler, c *Config) (secure, insec
 		handler = genericfilters.WithPanicRecovery(handler, c.RequestContextMapper)
 		handler = genericfilters.WithTimeoutForNonLongRunningRequests(handler, c.RequestContextMapper, c.LongRunningFunc)
 		handler = genericfilters.WithMaxInFlightLimit(handler, c.MaxRequestsInFlight, c.MaxMutatingRequestsInFlight, c.RequestContextMapper, c.LongRunningFunc)
-		handler = apiserverfilters.WithRequestInfo(handler, NewRequestInfoResolver(c), c.RequestContextMapper)
-		handler = api.WithRequestContext(handler, c.RequestContextMapper)
+		handler = genericapifilters.WithRequestInfo(handler, NewRequestInfoResolver(c), c.RequestContextMapper)
+		handler = apirequest.WithRequestContext(handler, c.RequestContextMapper)
 		return handler
 	}
 	audit := func(handler http.Handler) http.Handler {
-		return apiserverfilters.WithAudit(handler, c.RequestContextMapper, c.AuditWriter)
+		return genericapifilters.WithAudit(handler, c.RequestContextMapper, c.AuditWriter)
 	}
 	protect := func(handler http.Handler) http.Handler {
-		handler = apiserverfilters.WithAuthorization(handler, c.RequestContextMapper, c.Authorizer)
-		handler = apiserverfilters.WithImpersonation(handler, c.RequestContextMapper, c.Authorizer)
+		handler = genericapifilters.WithAuthorization(handler, c.RequestContextMapper, c.Authorizer)
+		handler = genericapifilters.WithImpersonation(handler, c.RequestContextMapper, c.Authorizer)
 		handler = audit(handler) // before impersonation to read original user
 		handler = authhandlers.WithAuthentication(handler, c.RequestContextMapper, c.Authenticator, authhandlers.Unauthorized(c.SupportsBasicAuth))
 		return handler
@@ -627,7 +604,7 @@ func (s *GenericAPIServer) installAPI(c *Config) {
 	s.HandlerContainer.Add(s.DynamicApisDiscovery())
 }
 
-func NewRequestInfoResolver(c *Config) *apiserverrequest.RequestInfoFactory {
+func NewRequestInfoResolver(c *Config) *apirequest.RequestInfoFactory {
 	apiPrefixes := sets.NewString(strings.Trim(APIGroupPrefix, "/")) // all possible API prefixes
 	legacyAPIPrefixes := sets.String{}                               // APIPrefixes that won't have groups (legacy)
 	for legacyAPIPrefix := range c.LegacyAPIGroupPrefixes {
@@ -635,7 +612,7 @@ func NewRequestInfoResolver(c *Config) *apiserverrequest.RequestInfoFactory {
 		legacyAPIPrefixes.Insert(strings.Trim(legacyAPIPrefix, "/"))
 	}
 
-	return &apiserverrequest.RequestInfoFactory{
+	return &apirequest.RequestInfoFactory{
 		APIPrefixes:          apiPrefixes,
 		GrouplessAPIPrefixes: legacyAPIPrefixes,
 	}

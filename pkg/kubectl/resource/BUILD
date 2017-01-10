@@ -37,6 +37,8 @@ go_library(
         "//pkg/util/sets:go_default_library",
         "//pkg/util/yaml:go_default_library",
         "//pkg/watch:go_default_library",
+        "//vendor:golang.org/x/text/encoding/unicode",
+        "//vendor:golang.org/x/text/transform",
     ],
 )
 
@@ -51,7 +53,7 @@ go_test(
         "//examples:config",
         "//test/fixtures",
     ],
-    library = "go_default_library",
+    library = ":go_default_library",
     tags = [
         "automanaged",
     ],
@@ -65,14 +67,27 @@ go_test(
         "//pkg/apimachinery/registered:go_default_library",
         "//pkg/apis/meta/v1:go_default_library",
         "//pkg/client/restclient/fake:go_default_library",
+        "//pkg/client/restclient/watch:go_default_library",
         "//pkg/labels:go_default_library",
         "//pkg/runtime:go_default_library",
         "//pkg/runtime/serializer/streaming:go_default_library",
         "//pkg/util/errors:go_default_library",
         "//pkg/util/testing:go_default_library",
         "//pkg/watch:go_default_library",
-        "//pkg/watch/versioned:go_default_library",
         "//vendor:github.com/ghodss/yaml",
         "//vendor:github.com/stretchr/testify/assert",
     ],
+)
+
+filegroup(
+    name = "package-srcs",
+    srcs = glob(["**"]),
+    tags = ["automanaged"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "all-srcs",
+    srcs = [":package-srcs"],
+    tags = ["automanaged"],
 )

@@ -28,6 +28,7 @@ go_library(
         "//pkg/apis/componentconfig:go_default_library",
         "//pkg/kubelet/api:go_default_library",
         "//pkg/kubelet/api/v1alpha1/runtime:go_default_library",
+        "//pkg/kubelet/cm:go_default_library",
         "//pkg/kubelet/container:go_default_library",
         "//pkg/kubelet/dockershim/cm:go_default_library",
         "//pkg/kubelet/dockertools:go_default_library",
@@ -64,7 +65,7 @@ go_test(
         "naming_test.go",
         "security_context_test.go",
     ],
-    library = "go_default_library",
+    library = ":go_default_library",
     tags = ["automanaged"],
     deps = [
         "//pkg/api/v1:go_default_library",
@@ -84,4 +85,21 @@ go_test(
         "//vendor:github.com/stretchr/testify/assert",
         "//vendor:github.com/stretchr/testify/require",
     ],
+)
+
+filegroup(
+    name = "package-srcs",
+    srcs = glob(["**"]),
+    tags = ["automanaged"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "all-srcs",
+    srcs = [
+        ":package-srcs",
+        "//pkg/kubelet/dockershim/cm:all-srcs",
+        "//pkg/kubelet/dockershim/remote:all-srcs",
+    ],
+    tags = ["automanaged"],
 )

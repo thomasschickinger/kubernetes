@@ -73,7 +73,7 @@ go_test(
         "kuberuntime_sandbox_test.go",
         "labels_test.go",
     ],
-    library = "go_default_library",
+    library = ":go_default_library",
     tags = ["automanaged"],
     deps = [
         "//pkg/api/v1:go_default_library",
@@ -93,4 +93,17 @@ go_test(
         "//vendor:github.com/google/cadvisor/info/v1",
         "//vendor:github.com/stretchr/testify/assert",
     ],
+)
+
+filegroup(
+    name = "package-srcs",
+    srcs = glob(["**"]),
+    tags = ["automanaged"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "all-srcs",
+    srcs = [":package-srcs"],
+    tags = ["automanaged"],
 )

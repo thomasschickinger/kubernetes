@@ -34,10 +34,26 @@ go_test(
         "port_split_test.go",
         "util_test.go",
     ],
-    library = "go_default_library",
+    library = ":go_default_library",
     tags = ["automanaged"],
     deps = [
         "//pkg/util/sets:go_default_library",
         "//vendor:github.com/spf13/pflag",
     ],
+)
+
+filegroup(
+    name = "package-srcs",
+    srcs = glob(["**"]),
+    tags = ["automanaged"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "all-srcs",
+    srcs = [
+        ":package-srcs",
+        "//pkg/util/net/sets:all-srcs",
+    ],
+    tags = ["automanaged"],
 )

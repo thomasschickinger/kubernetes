@@ -29,9 +29,22 @@ go_test(
     data = [
         "example_proc_cgroup",
     ],
-    library = "go_default_library",
+    library = ":go_default_library",
     tags = [
         "automanaged",
     ],
     deps = ["//vendor:github.com/stretchr/testify/assert"],
+)
+
+filegroup(
+    name = "package-srcs",
+    srcs = glob(["**"]),
+    tags = ["automanaged"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "all-srcs",
+    srcs = [":package-srcs"],
+    tags = ["automanaged"],
 )

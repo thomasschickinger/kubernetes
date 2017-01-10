@@ -383,6 +383,8 @@ items:
     - /api/*
     - /apis
     - /apis/*
+    - /swaggerapi
+    - /swaggerapi/*
     - /version
     verbs:
     - get
@@ -445,6 +447,7 @@ items:
     - persistentvolumeclaims
     - persistentvolumes
     - pods
+    - replicationcontrollers
     - secrets
     - serviceaccounts
     verbs:

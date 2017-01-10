@@ -2,6 +2,7 @@ cluster/addons/fluentd-elasticsearch/es-image
 cluster/images/etcd/attachlease
 cluster/images/etcd/rollback
 cmd/clicheck
+cmd/cloud-controller-manager
 cmd/gendocs
 cmd/genkubedocs
 cmd/genman
@@ -14,7 +15,6 @@ cmd/kube-apiserver/app/options
 cmd/kube-controller-manager
 cmd/kube-controller-manager/app/options
 cmd/kube-discovery
-cmd/kube-dns
 cmd/kube-proxy
 cmd/kubeadm
 cmd/kubeadm
@@ -75,6 +75,7 @@ pkg/api/v1
 pkg/api/v1/service
 pkg/apimachinery
 pkg/apis/abac/v0
+pkg/apis/abac/v1beta1
 pkg/apis/apps/install
 pkg/apis/authentication.k8s.io/install
 pkg/apis/authentication/install
@@ -92,11 +93,9 @@ pkg/apis/imagepolicy/install
 pkg/apis/meta/v1/unstructured
 pkg/apis/policy/install
 pkg/apis/rbac/install
+pkg/apis/rbac/v1alpha1
 pkg/apis/storage/install
 pkg/apis/storage/validation
-pkg/apiserver/audit
-pkg/apiserver/handlers/responsewriters
-pkg/apiserver/openapi
 pkg/auth/authenticator
 pkg/auth/authorizer/union
 pkg/client/conditions
@@ -157,6 +156,7 @@ pkg/client/listers/storage/internalversion
 pkg/client/listers/storage/v1beta1
 pkg/client/metrics
 pkg/client/metrics/prometheus
+pkg/client/restclient/watch
 pkg/client/testing/core
 pkg/client/typed/discovery
 pkg/client/unversioned
@@ -177,6 +177,10 @@ pkg/controller/volume/reconciler
 pkg/controller/volume/statusupdater
 pkg/conversion/queryparams
 pkg/credentialprovider/aws
+pkg/genericapiserver/api/audit
+pkg/genericapiserver/api/handlers/responsewriters
+pkg/genericapiserver/api/openapi
+pkg/genericapiserver/api/request
 pkg/genericapiserver/filters
 pkg/genericapiserver/mux
 pkg/genericapiserver/routes
@@ -255,6 +259,7 @@ pkg/util/flushwriter
 pkg/util/goroutinemap
 pkg/util/hash
 pkg/util/homedir
+pkg/util/i18n
 pkg/util/interrupt
 pkg/util/io
 pkg/util/json
@@ -277,6 +282,7 @@ pkg/volume/util/nestedpendingoperations
 pkg/volume/util/operationexecutor
 pkg/volume/util/types
 pkg/volume/util/volumehelper
+pkg/watch
 pkg/watch/json
 pkg/watch/versioned
 plugin/cmd/kube-scheduler

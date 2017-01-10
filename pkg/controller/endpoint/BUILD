@@ -40,7 +40,7 @@ go_library(
 go_test(
     name = "go_default_test",
     srcs = ["endpoints_controller_test.go"],
-    library = "go_default_library",
+    library = ":go_default_library",
     tags = ["automanaged"],
     deps = [
         "//pkg/api/testapi:go_default_library",
@@ -56,4 +56,17 @@ go_test(
         "//pkg/util/intstr:go_default_library",
         "//pkg/util/testing:go_default_library",
     ],
+)
+
+filegroup(
+    name = "package-srcs",
+    srcs = glob(["**"]),
+    tags = ["automanaged"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "all-srcs",
+    srcs = [":package-srcs"],
+    tags = ["automanaged"],
 )

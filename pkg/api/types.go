@@ -1133,6 +1133,26 @@ type SecretKeySelector struct {
 	Key string
 }
 
+// EnvFromSource represents the source of a set of ConfigMaps
+type EnvFromSource struct {
+	// An optional identifier to prepend to each key in the ConfigMap. Must be a C_IDENTIFIER.
+	// +optional
+	Prefix string
+	// The ConfigMap to select from.
+	//+optional
+	ConfigMapRef *ConfigMapEnvSource
+}
+
+// ConfigMapEnvSource selects a ConfigMap to populate the environment
+// variables with.
+//
+// The contents of the target ConfigMap's Data field will represent the
+// key-value pairs as environment variables.
+type ConfigMapEnvSource struct {
+	// The ConfigMap to select from.
+	LocalObjectReference
+}
+
 // HTTPHeader describes a custom header to be used in HTTP probes
 type HTTPHeader struct {
 	// The header field name
@@ -1274,6 +1294,14 @@ type Container struct {
 	WorkingDir string
 	// +optional
 	Ports []ContainerPort
+	// List of sources to populate environment variables in the container.
+	// The keys defined within a source must be a C_IDENTIFIER. An invalid key
+	// will prevent the container from starting. When a key exists in multiple
+	// sources, the value associated with the last source will take precedence.
+	// Values defined by an Env with a duplicate key will take precedence.
+	// Cannot be updated.
+	// +optional
+	EnvFrom []EnvFromSource
 	// +optional
 	Env []EnvVar
 	// Compute resource requirements.
@@ -1933,7 +1961,7 @@ type PodStatus struct {
 	// +optional
 	StartTime *metav1.Time
 	// +optional
-	QOSClass PodQOSClass `json:"qosClass,omitempty"`
+	QOSClass PodQOSClass
 
 	// The list has one entry per init container in the manifest. The most recent successful
 	// init container will have ready = true, the most recently started container will have
@@ -3248,6 +3276,9 @@ const (
 	// - Secret.Annotations["kubernetes.io/service-account.uid"] - the UID of the ServiceAccount the token identifies
 	// - Secret.Data["token"] - a token that identifies the service account to the API
 	SecretTypeServiceAccountToken SecretType = "kubernetes.io/service-account-token"
+
+	// SecretTypeBootstrapToken is the key for tokens used by kubeadm to validate cluster info during discovery.
+	SecretTypeBootstrapToken = "bootstrap.kubernetes.io/token"
 
 	// ServiceAccountNameKey is the key of the required annotation for SecretTypeServiceAccountToken secrets
 	ServiceAccountNameKey = "kubernetes.io/service-account.name"

@@ -19,13 +19,12 @@ go_library(
     tags = ["automanaged"],
     deps = [
         "//pkg/api:go_default_library",
-        "//pkg/api/endpoints:go_default_library",
         "//pkg/api/meta:go_default_library",
         "//pkg/api/pod:go_default_library",
         "//pkg/api/resource:go_default_library",
         "//pkg/api/service:go_default_library",
         "//pkg/api/util:go_default_library",
-        "//pkg/api/v1:go_default_library",
+        "//pkg/api/validation/genericvalidation:go_default_library",
         "//pkg/apimachinery/registered:go_default_library",
         "//pkg/apis/meta/v1:go_default_library",
         "//pkg/apis/meta/v1/unstructured:go_default_library",
@@ -64,7 +63,7 @@ go_test(
         "testdata/v1/validPod.yaml",
         "//api/swagger-spec",
     ],
-    library = "go_default_library",
+    library = ":go_default_library",
     tags = ["automanaged"],
     deps = [
         "//pkg/api:go_default_library",
@@ -86,4 +85,21 @@ go_test(
         "//pkg/util/yaml:go_default_library",
         "//vendor:github.com/ghodss/yaml",
     ],
+)
+
+filegroup(
+    name = "package-srcs",
+    srcs = glob(["**"]),
+    tags = ["automanaged"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "all-srcs",
+    srcs = [
+        ":package-srcs",
+        "//pkg/api/validation/genericvalidation:all-srcs",
+        "//pkg/api/validation/path:all-srcs",
+    ],
+    tags = ["automanaged"],
 )

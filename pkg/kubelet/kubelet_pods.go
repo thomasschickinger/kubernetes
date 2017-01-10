@@ -29,6 +29,7 @@ import (
 	"runtime"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/golang/glog"
@@ -414,6 +415,46 @@ func (kl *Kubelet) makeEnvironmentVariables(pod *v1.Pod, container *v1.Container
 		return result, err
 	}
 
+	var (
+		configMaps = make(map[string]*v1.ConfigMap)
+		tmpEnv     = make(map[string]string)
+	)
+
+	// Env will override EnvFrom variables.
+	// Process EnvFrom first then allow Env to replace existing values.
+	for _, envFrom := range container.EnvFrom {
+		if envFrom.ConfigMapRef != nil {
+			name := envFrom.ConfigMapRef.Name
+			configMap, ok := configMaps[name]
+			if !ok {
+				if kl.kubeClient == nil {
+					return result, fmt.Errorf("Couldn't get configMap %v/%v, no kubeClient defined", pod.Namespace, name)
+				}
+				configMap, err = kl.kubeClient.Core().ConfigMaps(pod.Namespace).Get(name, metav1.GetOptions{})
+
+				if err != nil {
+					return result, err
+				}
+				configMaps[name] = configMap
+			}
+			for k, v := range configMap.Data {
+				if len(envFrom.Prefix) > 0 {
+					k = envFrom.Prefix + k
+				}
+				if errMsgs := utilvalidation.IsCIdentifier(k); len(errMsgs) != 0 {
+					return result, fmt.Errorf("Invalid environment variable name, %v, from configmap %v/%v: %s", k, pod.Namespace, name, errMsgs[0])
+				}
+				// Accesses apiserver+Pods.
+				// So, the master may set service env vars, or kubelet may.  In case both are doing
+				// it, we delete the key from the kubelet-generated ones so we don't have duplicate
+				// env vars.
+				// TODO: remove this next line once all platforms use apiserver+Pods.
+				delete(serviceEnv, k)
+				tmpEnv[k] = v
+			}
+		}
+	}
+
 	// Determine the final values of variables:
 	//
 	// 1.  Determine the final value of each variable:
@@ -424,8 +465,6 @@ func (kl *Kubelet) makeEnvironmentVariables(pod *v1.Pod, container *v1.Container
 	// 2.  Create the container's environment in the order variables are declared
 	// 3.  Add remaining service environment vars
 	var (
-		tmpEnv      = make(map[string]string)
-		configMaps  = make(map[string]*v1.ConfigMap)
 		secrets     = make(map[string]*v1.Secret)
 		mappingFunc = expansion.MappingFuncFor(tmpEnv, serviceEnv)
 	)
@@ -434,7 +473,7 @@ func (kl *Kubelet) makeEnvironmentVariables(pod *v1.Pod, container *v1.Container
 		// So, the master may set service env vars, or kubelet may.  In case both are doing
 		// it, we delete the key from the kubelet-generated ones so we don't have duplicate
 		// env vars.
-		// TODO: remove this net line once all platforms use apiserver+Pods.
+		// TODO: remove this next line once all platforms use apiserver+Pods.
 		delete(serviceEnv, envVar.Name)
 
 		runtimeVal := envVar.Value
@@ -499,7 +538,11 @@ func (kl *Kubelet) makeEnvironmentVariables(pod *v1.Pod, container *v1.Container
 		}
 
 		tmpEnv[envVar.Name] = runtimeVal
-		result = append(result, kubecontainer.EnvVar{Name: envVar.Name, Value: tmpEnv[envVar.Name]})
+	}
+
+	// Append the env vars
+	for k, v := range tmpEnv {
+		result = append(result, kubecontainer.EnvVar{Name: k, Value: v})
 	}
 
 	// Append remaining service env vars.
@@ -757,8 +800,8 @@ func (kl *Kubelet) HandlePodCleanups() error {
 // another goroutine isn't already in action.
 func (kl *Kubelet) podKiller() {
 	killing := sets.NewString()
-	resultCh := make(chan types.UID)
-	defer close(resultCh)
+	// guard for the killing set
+	lock := sync.Mutex{}
 	for {
 		select {
 		case podPair, ok := <-kl.podKillingCh:
@@ -769,24 +812,25 @@ func (kl *Kubelet) podKiller() {
 			runningPod := podPair.RunningPod
 			apiPod := podPair.APIPod
 
-			if killing.Has(string(runningPod.ID)) {
-				// The pod is already being killed.
-				break
+			lock.Lock()
+			exists := killing.Has(string(runningPod.ID))
+			if !exists {
+				killing.Insert(string(runningPod.ID))
 			}
-			killing.Insert(string(runningPod.ID))
-			go func(apiPod *v1.Pod, runningPod *kubecontainer.Pod, ch chan types.UID) {
-				defer func() {
-					ch <- runningPod.ID
-				}()
-				glog.V(2).Infof("Killing unwanted pod %q", runningPod.Name)
-				err := kl.killPod(apiPod, runningPod, nil, nil)
-				if err != nil {
-					glog.Errorf("Failed killing the pod %q: %v", runningPod.Name, err)
-				}
-			}(apiPod, runningPod, resultCh)
+			lock.Unlock()
 
-		case podID := <-resultCh:
-			killing.Delete(string(podID))
+			if !exists {
+				go func(apiPod *v1.Pod, runningPod *kubecontainer.Pod) {
+					glog.V(2).Infof("Killing unwanted pod %q", runningPod.Name)
+					err := kl.killPod(apiPod, runningPod, nil, nil)
+					if err != nil {
+						glog.Errorf("Failed killing the pod %q: %v", runningPod.Name, err)
+					}
+					lock.Lock()
+					killing.Delete(string(runningPod.ID))
+					lock.Unlock()
+				}(apiPod, runningPod)
+			}
 		}
 	}
 }

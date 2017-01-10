@@ -79,7 +79,7 @@ go_test(
     data = [
         "//api/swagger-spec",
     ],
-    library = "go_default_library",
+    library = ":go_default_library",
     tags = ["automanaged"],
     deps = [
         "//pkg/api:go_default_library",
@@ -113,4 +113,22 @@ go_test(
         "//vendor:github.com/emicklei/go-restful/swagger",
         "//vendor:github.com/stretchr/testify/assert",
     ],
+)
+
+filegroup(
+    name = "package-srcs",
+    srcs = glob(["**"]),
+    tags = ["automanaged"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "all-srcs",
+    srcs = [
+        ":package-srcs",
+        "//pkg/kubectl/cmd/util/editor:all-srcs",
+        "//pkg/kubectl/cmd/util/jsonmerge:all-srcs",
+        "//pkg/kubectl/cmd/util/sanity:all-srcs",
+    ],
+    tags = ["automanaged"],
 )

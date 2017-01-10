@@ -33,7 +33,7 @@ import (
 	extensions "k8s.io/kubernetes/pkg/apis/extensions/v1beta1"
 	metav1 "k8s.io/kubernetes/pkg/apis/meta/v1"
 	"k8s.io/kubernetes/pkg/client/cache"
-	clientset "k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
+	"k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
 	"k8s.io/kubernetes/pkg/controller"
 	"k8s.io/kubernetes/pkg/labels"
 	"k8s.io/kubernetes/pkg/runtime"
@@ -780,6 +780,17 @@ func GetActualReplicaCountForReplicaSets(replicaSets []*extensions.ReplicaSet) i
 		}
 	}
 	return totalActualReplicas
+}
+
+// GetReadyReplicaCountForReplicaSets returns the number of ready pods corresponding to the given replica sets.
+func GetReadyReplicaCountForReplicaSets(replicaSets []*extensions.ReplicaSet) int32 {
+	totalReadyReplicas := int32(0)
+	for _, rs := range replicaSets {
+		if rs != nil {
+			totalReadyReplicas += rs.Status.ReadyReplicas
+		}
+	}
+	return totalReadyReplicas
 }
 
 // GetAvailableReplicaCountForReplicaSets returns the number of available pods corresponding to the given replica sets.

@@ -46,7 +46,7 @@ go_test(
         "prober_test.go",
         "worker_test.go",
     ],
-    library = "go_default_library",
+    library = ":go_default_library",
     tags = ["automanaged"],
     deps = [
         "//pkg/api/v1:go_default_library",
@@ -66,4 +66,21 @@ go_test(
         "//pkg/util/wait:go_default_library",
         "//vendor:github.com/golang/glog",
     ],
+)
+
+filegroup(
+    name = "package-srcs",
+    srcs = glob(["**"]),
+    tags = ["automanaged"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "all-srcs",
+    srcs = [
+        ":package-srcs",
+        "//pkg/kubelet/prober/results:all-srcs",
+        "//pkg/kubelet/prober/testing:all-srcs",
+    ],
+    tags = ["automanaged"],
 )

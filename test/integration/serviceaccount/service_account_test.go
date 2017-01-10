@@ -31,15 +31,15 @@ import (
 	"testing"
 	"time"
 
+	"k8s.io/apiserver/pkg/authentication/authenticator"
+	"k8s.io/apiserver/pkg/authentication/user"
+	"k8s.io/apiserver/pkg/authorization/authorizer"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/errors"
 	"k8s.io/kubernetes/pkg/api/v1"
 	"k8s.io/kubernetes/pkg/apimachinery/registered"
 	metav1 "k8s.io/kubernetes/pkg/apis/meta/v1"
-	"k8s.io/kubernetes/pkg/auth/authenticator"
 	"k8s.io/kubernetes/pkg/auth/authenticator/bearertoken"
-	"k8s.io/kubernetes/pkg/auth/authorizer"
-	"k8s.io/kubernetes/pkg/auth/user"
 	clientset "k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	"k8s.io/kubernetes/pkg/client/restclient"
@@ -404,7 +404,8 @@ func startServiceAccountTestServer(t *testing.T) (*clientset.Clientset, restclie
 	})
 
 	// Set up admission plugin to auto-assign serviceaccounts to pods
-	serviceAccountAdmission := serviceaccountadmission.NewServiceAccount(internalRootClientset)
+	serviceAccountAdmission := serviceaccountadmission.NewServiceAccount()
+	serviceAccountAdmission.SetInternalClientSet(internalRootClientset)
 
 	masterConfig := framework.NewMasterConfig()
 	masterConfig.GenericConfig.EnableIndex = true

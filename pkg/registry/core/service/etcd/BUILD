@@ -16,6 +16,7 @@ go_library(
         "//pkg/api:go_default_library",
         "//pkg/api/rest:go_default_library",
         "//pkg/apis/meta/v1:go_default_library",
+        "//pkg/genericapiserver/api/request:go_default_library",
         "//pkg/registry/core/service:go_default_library",
         "//pkg/registry/generic:go_default_library",
         "//pkg/registry/generic/registry:go_default_library",
@@ -26,7 +27,7 @@ go_library(
 go_test(
     name = "go_default_test",
     srcs = ["etcd_test.go"],
-    library = "go_default_library",
+    library = ":go_default_library",
     tags = ["automanaged"],
     deps = [
         "//pkg/api:go_default_library",
@@ -38,4 +39,17 @@ go_test(
         "//pkg/storage/etcd/testing:go_default_library",
         "//pkg/util/intstr:go_default_library",
     ],
+)
+
+filegroup(
+    name = "package-srcs",
+    srcs = glob(["**"]),
+    tags = ["automanaged"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "all-srcs",
+    srcs = [":package-srcs"],
+    tags = ["automanaged"],
 )

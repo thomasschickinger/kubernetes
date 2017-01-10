@@ -36,7 +36,7 @@ import (
 	"strings"
 	"time"
 
-	kubeadmutil "k8s.io/kubernetes/cmd/kubeadm/app/util"
+	kubeadmkubeconfigphase "k8s.io/kubernetes/cmd/kubeadm/app/phases/kubeconfig"
 	"k8s.io/kubernetes/federation/pkg/kubefed/util"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/resource"
@@ -199,7 +199,7 @@ func initFederation(cmdOut io.Writer, config util.AdminConfig, cmd *cobra.Comman
 	}
 
 	// Since only one IP address can be specified as advertise address,
-	// we arbitrarily pick the first availabe IP address
+	// we arbitrarily pick the first available IP address
 	advertiseAddress := ""
 	if len(ips) > 0 {
 		advertiseAddress = ips[0]
@@ -360,16 +360,11 @@ func createAPIServerCredentialsSecret(clientset *client.Clientset, namespace, cr
 }
 
 func createControllerManagerKubeconfigSecret(clientset *client.Clientset, namespace, name, svcName, kubeconfigName string, entKeyPairs *entityKeyPairs, dryRun bool) (*api.Secret, error) {
-	basicClientConfig := kubeadmutil.CreateBasicClientConfig(
-		name,
+	config := kubeadmkubeconfigphase.MakeClientConfigWithCerts(
 		fmt.Sprintf("https://%s", svcName),
-		certutil.EncodeCertPEM(entKeyPairs.ca.Cert),
-	)
-
-	config := kubeadmutil.MakeClientConfigWithCerts(
-		basicClientConfig,
 		name,
 		"federation-controller-manager",
+		certutil.EncodeCertPEM(entKeyPairs.ca.Cert),
 		certutil.EncodePrivateKeyPEM(entKeyPairs.controllerManager.Key),
 		certutil.EncodeCertPEM(entKeyPairs.controllerManager.Cert),
 	)
@@ -417,7 +412,6 @@ func createAPIServer(clientset *client.Clientset, namespace, name, image, creden
 		"federation-apiserver",
 		"--bind-address=0.0.0.0",
 		"--etcd-servers=http://localhost:2379",
-		"--service-cluster-ip-range=10.0.0.0/16",
 		"--secure-port=443",
 		"--client-ca-file=/etc/federation/apiserver/ca.crt",
 		"--tls-cert-file=/etc/federation/apiserver/server.crt",

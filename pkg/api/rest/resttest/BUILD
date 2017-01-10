@@ -19,9 +19,23 @@ go_library(
         "//pkg/apis/meta/v1:go_default_library",
         "//pkg/conversion:go_default_library",
         "//pkg/fields:go_default_library",
+        "//pkg/genericapiserver/api/request:go_default_library",
         "//pkg/labels:go_default_library",
         "//pkg/runtime:go_default_library",
         "//pkg/types:go_default_library",
         "//pkg/util/wait:go_default_library",
     ],
+)
+
+filegroup(
+    name = "package-srcs",
+    srcs = glob(["**"]),
+    tags = ["automanaged"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "all-srcs",
+    srcs = [":package-srcs"],
+    tags = ["automanaged"],
 )

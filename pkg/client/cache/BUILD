@@ -77,7 +77,7 @@ go_test(
         "store_test.go",
         "undelta_store_test.go",
     ],
-    library = "go_default_library",
+    library = ":go_default_library",
     tags = ["automanaged"],
     deps = [
         "//pkg/api:go_default_library",
@@ -100,4 +100,17 @@ go_test(
         "//pkg/watch:go_default_library",
         "//vendor:github.com/google/gofuzz",
     ],
+)
+
+filegroup(
+    name = "package-srcs",
+    srcs = glob(["**"]),
+    tags = ["automanaged"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "all-srcs",
+    srcs = [":package-srcs"],
+    tags = ["automanaged"],
 )

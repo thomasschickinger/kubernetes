@@ -28,11 +28,27 @@ go_test(
         "deep_copy_test.go",
         "helper_test.go",
     ],
-    library = "go_default_library",
+    library = ":go_default_library",
     tags = ["automanaged"],
     deps = [
         "//pkg/util/diff:go_default_library",
         "//vendor:github.com/google/gofuzz",
         "//vendor:github.com/spf13/pflag",
     ],
+)
+
+filegroup(
+    name = "package-srcs",
+    srcs = glob(["**"]),
+    tags = ["automanaged"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "all-srcs",
+    srcs = [
+        ":package-srcs",
+        "//pkg/conversion/queryparams:all-srcs",
+    ],
+    tags = ["automanaged"],
 )

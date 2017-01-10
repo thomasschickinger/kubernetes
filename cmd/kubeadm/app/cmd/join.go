@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"path"
 
 	"github.com/renstrom/dedent"
 	"github.com/spf13/cobra"
@@ -29,8 +30,10 @@ import (
 	"k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm/validation"
 	"k8s.io/kubernetes/cmd/kubeadm/app/discovery"
 	kubenode "k8s.io/kubernetes/cmd/kubeadm/app/node"
+	kubeconfigphase "k8s.io/kubernetes/cmd/kubeadm/app/phases/kubeconfig"
 	"k8s.io/kubernetes/cmd/kubeadm/app/preflight"
 	kubeadmutil "k8s.io/kubernetes/cmd/kubeadm/app/util"
+
 	"k8s.io/kubernetes/pkg/api"
 	clientcmdapi "k8s.io/kubernetes/pkg/client/unversioned/clientcmd/api"
 	"k8s.io/kubernetes/pkg/runtime"
@@ -127,16 +130,15 @@ func (j *Join) Validate() error {
 	return validation.ValidateNodeConfiguration(j.cfg).ToAggregate()
 }
 
-// Run executes worked node provisioning and tries to join an existing cluster.
+// Run executes worker node provisioning and tries to join an existing cluster.
 func (j *Join) Run(out io.Writer) error {
-	clusterInfo, err := kubenode.RetrieveTrustedClusterInfo(j.cfg.Discovery.Token)
-	if err != nil {
-		return err
-	}
-
 	var cfg *clientcmdapi.Config
 	// TODO: delete this first block when we move Token to the discovery interface
 	if j.cfg.Discovery.Token != nil {
+		clusterInfo, err := kubenode.RetrieveTrustedClusterInfo(j.cfg.Discovery.Token)
+		if err != nil {
+			return err
+		}
 		connectionDetails, err := kubenode.EstablishMasterConnection(j.cfg.Discovery.Token, clusterInfo)
 		if err != nil {
 			return err
@@ -150,7 +152,7 @@ func (j *Join) Run(out io.Writer) error {
 			return err
 		}
 	} else {
-		cfg, err = discovery.For(j.cfg.Discovery)
+		cfg, err := discovery.For(j.cfg.Discovery)
 		if err != nil {
 			return err
 		}
@@ -159,8 +161,7 @@ func (j *Join) Run(out io.Writer) error {
 		}
 	}
 
-	err = kubeadmutil.WriteKubeconfigIfNotExists("kubelet", cfg)
-	if err != nil {
+	if err := kubeconfigphase.WriteKubeconfigToDisk(path.Join(kubeadmapi.GlobalEnvParams.KubernetesDir, kubeconfigphase.KubeletKubeConfigFileName), cfg); err != nil {
 		return err
 	}
 

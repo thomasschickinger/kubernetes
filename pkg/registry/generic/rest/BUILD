@@ -38,7 +38,7 @@ go_test(
         "response_checker_test.go",
         "streamer_test.go",
     ],
-    library = "go_default_library",
+    library = ":go_default_library",
     tags = ["automanaged"],
     deps = [
         "//pkg/api:go_default_library",
@@ -51,4 +51,17 @@ go_test(
         "//vendor:github.com/stretchr/testify/require",
         "//vendor:golang.org/x/net/websocket",
     ],
+)
+
+filegroup(
+    name = "package-srcs",
+    srcs = glob(["**"]),
+    tags = ["automanaged"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "all-srcs",
+    srcs = [":package-srcs"],
+    tags = ["automanaged"],
 )

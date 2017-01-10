@@ -288,6 +288,22 @@
 			"Rev": "dfb21201d9270c1082d5fb0f07f500311ff72f18"
 		},
 		{
+			"ImportPath": "github.com/chai2010/gettext-go/gettext",
+			"Rev": "c6fed771bfd517099caf0f7a961671fa8ed08723"
+		},
+		{
+			"ImportPath": "github.com/chai2010/gettext-go/gettext/mo",
+			"Rev": "c6fed771bfd517099caf0f7a961671fa8ed08723"
+		},
+		{
+			"ImportPath": "github.com/chai2010/gettext-go/gettext/plural",
+			"Rev": "c6fed771bfd517099caf0f7a961671fa8ed08723"
+		},
+		{
+			"ImportPath": "github.com/chai2010/gettext-go/gettext/po",
+			"Rev": "c6fed771bfd517099caf0f7a961671fa8ed08723"
+		},
+		{
 			"ImportPath": "github.com/cloudflare/cfssl/auth",
 			"Comment": "1.2.0",
 			"Rev": "db0d0650b6496bfe8061ec56a92edd32d8e75c30"
@@ -659,11 +675,6 @@
 		{
 			"ImportPath": "github.com/coreos/go-semver/semver",
 			"Rev": "568e959cd89871e61434c1143528d9162da89ef2"
-		},
-		{
-			"ImportPath": "github.com/coreos/go-systemd/activation",
-			"Comment": "v8-2-g4484981",
-			"Rev": "4484981625c1a6a2ecb40a390fcb6a9bcfee76e3"
 		},
 		{
 			"ImportPath": "github.com/coreos/go-systemd/daemon",
@@ -2126,31 +2137,6 @@
 			"Rev": "10ef21a441db47d8b13ebcc5fd2310f636973c77"
 		},
 		{
-			"ImportPath": "github.com/skynetservices/skydns/cache",
-			"Comment": "2.5.3a-41-g00ade30",
-			"Rev": "00ade3024f047d26130abf161900e0adb72a06f1"
-		},
-		{
-			"ImportPath": "github.com/skynetservices/skydns/metrics",
-			"Comment": "2.5.3a-41-g00ade30",
-			"Rev": "00ade3024f047d26130abf161900e0adb72a06f1"
-		},
-		{
-			"ImportPath": "github.com/skynetservices/skydns/msg",
-			"Comment": "2.5.3a-41-g00ade30",
-			"Rev": "00ade3024f047d26130abf161900e0adb72a06f1"
-		},
-		{
-			"ImportPath": "github.com/skynetservices/skydns/server",
-			"Comment": "2.5.3a-41-g00ade30",
-			"Rev": "00ade3024f047d26130abf161900e0adb72a06f1"
-		},
-		{
-			"ImportPath": "github.com/skynetservices/skydns/singleflight",
-			"Comment": "2.5.3a-41-g00ade30",
-			"Rev": "00ade3024f047d26130abf161900e0adb72a06f1"
-		},
-		{
 			"ImportPath": "github.com/spf13/afero",
 			"Rev": "b28a7effac979219c2a2ed6205a4d70e4b1bcd02"
 		},
@@ -2342,31 +2328,39 @@
 		},
 		{
 			"ImportPath": "golang.org/x/crypto/bcrypt",
-			"Rev": "1f22c0103821b9390939b6776727195525381532"
+			"Rev": "d172538b2cfce0c13cee31e647d0367aa8cd2486"
 		},
 		{
 			"ImportPath": "golang.org/x/crypto/blowfish",
-			"Rev": "1f22c0103821b9390939b6776727195525381532"
+			"Rev": "d172538b2cfce0c13cee31e647d0367aa8cd2486"
 		},
 		{
 			"ImportPath": "golang.org/x/crypto/curve25519",
-			"Rev": "1f22c0103821b9390939b6776727195525381532"
+			"Rev": "d172538b2cfce0c13cee31e647d0367aa8cd2486"
+		},
+		{
+			"ImportPath": "golang.org/x/crypto/ed25519",
+			"Rev": "d172538b2cfce0c13cee31e647d0367aa8cd2486"
+		},
+		{
+			"ImportPath": "golang.org/x/crypto/ed25519/internal/edwards25519",
+			"Rev": "d172538b2cfce0c13cee31e647d0367aa8cd2486"
 		},
 		{
 			"ImportPath": "golang.org/x/crypto/pkcs12",
-			"Rev": "1f22c0103821b9390939b6776727195525381532"
+			"Rev": "d172538b2cfce0c13cee31e647d0367aa8cd2486"
 		},
 		{
 			"ImportPath": "golang.org/x/crypto/pkcs12/internal/rc2",
-			"Rev": "1f22c0103821b9390939b6776727195525381532"
+			"Rev": "d172538b2cfce0c13cee31e647d0367aa8cd2486"
 		},
 		{
 			"ImportPath": "golang.org/x/crypto/ssh",
-			"Rev": "1f22c0103821b9390939b6776727195525381532"
+			"Rev": "d172538b2cfce0c13cee31e647d0367aa8cd2486"
 		},
 		{
 			"ImportPath": "golang.org/x/crypto/ssh/terminal",
-			"Rev": "1f22c0103821b9390939b6776727195525381532"
+			"Rev": "d172538b2cfce0c13cee31e647d0367aa8cd2486"
 		},
 		{
 			"ImportPath": "golang.org/x/exp/inotify",
@@ -2449,7 +2443,27 @@
 			"Rev": "2910a502d2bf9e43193af9d68ca516529614eed3"
 		},
 		{
+			"ImportPath": "golang.org/x/text/encoding",
+			"Rev": "2910a502d2bf9e43193af9d68ca516529614eed3"
+		},
+		{
+			"ImportPath": "golang.org/x/text/encoding/internal",
+			"Rev": "2910a502d2bf9e43193af9d68ca516529614eed3"
+		},
+		{
+			"ImportPath": "golang.org/x/text/encoding/internal/identifier",
+			"Rev": "2910a502d2bf9e43193af9d68ca516529614eed3"
+		},
+		{
+			"ImportPath": "golang.org/x/text/encoding/unicode",
+			"Rev": "2910a502d2bf9e43193af9d68ca516529614eed3"
+		},
+		{
 			"ImportPath": "golang.org/x/text/internal/tag",
+			"Rev": "2910a502d2bf9e43193af9d68ca516529614eed3"
+		},
+		{
+			"ImportPath": "golang.org/x/text/internal/utf8internal",
 			"Rev": "2910a502d2bf9e43193af9d68ca516529614eed3"
 		},
 		{
@@ -2486,31 +2500,31 @@
 		},
 		{
 			"ImportPath": "google.golang.org/api/cloudmonitoring/v2beta2",
-			"Rev": "a69f0f19d246419bb931b0ac8f4f8d3f3e6d4feb"
+			"Rev": "55146ba61254fdb1c26d65ff3c04bc1611ad73fb"
 		},
 		{
 			"ImportPath": "google.golang.org/api/compute/v1",
-			"Rev": "a69f0f19d246419bb931b0ac8f4f8d3f3e6d4feb"
+			"Rev": "55146ba61254fdb1c26d65ff3c04bc1611ad73fb"
 		},
 		{
 			"ImportPath": "google.golang.org/api/container/v1",
-			"Rev": "a69f0f19d246419bb931b0ac8f4f8d3f3e6d4feb"
+			"Rev": "55146ba61254fdb1c26d65ff3c04bc1611ad73fb"
 		},
 		{
 			"ImportPath": "google.golang.org/api/dns/v1",
-			"Rev": "a69f0f19d246419bb931b0ac8f4f8d3f3e6d4feb"
+			"Rev": "55146ba61254fdb1c26d65ff3c04bc1611ad73fb"
 		},
 		{
 			"ImportPath": "google.golang.org/api/gensupport",
-			"Rev": "a69f0f19d246419bb931b0ac8f4f8d3f3e6d4feb"
+			"Rev": "55146ba61254fdb1c26d65ff3c04bc1611ad73fb"
 		},
 		{
 			"ImportPath": "google.golang.org/api/googleapi",
-			"Rev": "a69f0f19d246419bb931b0ac8f4f8d3f3e6d4feb"
+			"Rev": "55146ba61254fdb1c26d65ff3c04bc1611ad73fb"
 		},
 		{
 			"ImportPath": "google.golang.org/api/googleapi/internal/uritemplates",
-			"Rev": "a69f0f19d246419bb931b0ac8f4f8d3f3e6d4feb"
+			"Rev": "55146ba61254fdb1c26d65ff3c04bc1611ad73fb"
 		},
 		{
 			"ImportPath": "google.golang.org/appengine",
@@ -2625,43 +2639,43 @@
 		},
 		{
 			"ImportPath": "k8s.io/gengo/args",
-			"Rev": "6a1c24d7f08e671c244023ca9367d2dfbfaf57fc"
+			"Rev": "8dd9c9e5e82c3cca687497c3cd7ac90e702c7c21"
 		},
 		{
 			"ImportPath": "k8s.io/gengo/examples/deepcopy-gen/generators",
-			"Rev": "6a1c24d7f08e671c244023ca9367d2dfbfaf57fc"
+			"Rev": "8dd9c9e5e82c3cca687497c3cd7ac90e702c7c21"
 		},
 		{
 			"ImportPath": "k8s.io/gengo/examples/defaulter-gen/generators",
-			"Rev": "6a1c24d7f08e671c244023ca9367d2dfbfaf57fc"
+			"Rev": "8dd9c9e5e82c3cca687497c3cd7ac90e702c7c21"
 		},
 		{
 			"ImportPath": "k8s.io/gengo/examples/import-boss/generators",
-			"Rev": "6a1c24d7f08e671c244023ca9367d2dfbfaf57fc"
+			"Rev": "8dd9c9e5e82c3cca687497c3cd7ac90e702c7c21"
 		},
 		{
 			"ImportPath": "k8s.io/gengo/examples/set-gen/generators",
-			"Rev": "6a1c24d7f08e671c244023ca9367d2dfbfaf57fc"
+			"Rev": "8dd9c9e5e82c3cca687497c3cd7ac90e702c7c21"
 		},
 		{
 			"ImportPath": "k8s.io/gengo/examples/set-gen/sets",
-			"Rev": "6a1c24d7f08e671c244023ca9367d2dfbfaf57fc"
+			"Rev": "8dd9c9e5e82c3cca687497c3cd7ac90e702c7c21"
 		},
 		{
 			"ImportPath": "k8s.io/gengo/generator",
-			"Rev": "6a1c24d7f08e671c244023ca9367d2dfbfaf57fc"
+			"Rev": "8dd9c9e5e82c3cca687497c3cd7ac90e702c7c21"
 		},
 		{
 			"ImportPath": "k8s.io/gengo/namer",
-			"Rev": "6a1c24d7f08e671c244023ca9367d2dfbfaf57fc"
+			"Rev": "8dd9c9e5e82c3cca687497c3cd7ac90e702c7c21"
 		},
 		{
 			"ImportPath": "k8s.io/gengo/parser",
-			"Rev": "6a1c24d7f08e671c244023ca9367d2dfbfaf57fc"
+			"Rev": "8dd9c9e5e82c3cca687497c3cd7ac90e702c7c21"
 		},
 		{
 			"ImportPath": "k8s.io/gengo/types",
-			"Rev": "6a1c24d7f08e671c244023ca9367d2dfbfaf57fc"
+			"Rev": "8dd9c9e5e82c3cca687497c3cd7ac90e702c7c21"
 		},
 		{
 			"ImportPath": "k8s.io/heapster/metrics/api/v1/types",

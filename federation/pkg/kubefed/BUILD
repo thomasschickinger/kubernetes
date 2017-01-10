@@ -43,7 +43,7 @@ go_test(
         "join_test.go",
         "unjoin_test.go",
     ],
-    library = "go_default_library",
+    library = ":go_default_library",
     tags = ["automanaged"],
     deps = [
         "//federation/apis/federation:go_default_library",
@@ -63,4 +63,22 @@ go_test(
         "//pkg/kubectl/cmd/util:go_default_library",
         "//vendor:k8s.io/client-go/pkg/util/diff",
     ],
+)
+
+filegroup(
+    name = "package-srcs",
+    srcs = glob(["**"]),
+    tags = ["automanaged"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "all-srcs",
+    srcs = [
+        ":package-srcs",
+        "//federation/pkg/kubefed/init:all-srcs",
+        "//federation/pkg/kubefed/testing:all-srcs",
+        "//federation/pkg/kubefed/util:all-srcs",
+    ],
+    tags = ["automanaged"],
 )

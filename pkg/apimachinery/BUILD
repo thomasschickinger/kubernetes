@@ -25,7 +25,24 @@ go_library(
 go_test(
     name = "go_default_test",
     srcs = ["types_test.go"],
-    library = "go_default_library",
+    library = ":go_default_library",
     tags = ["automanaged"],
     deps = ["//pkg/runtime/schema:go_default_library"],
+)
+
+filegroup(
+    name = "package-srcs",
+    srcs = glob(["**"]),
+    tags = ["automanaged"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "all-srcs",
+    srcs = [
+        ":package-srcs",
+        "//pkg/apimachinery/announced:all-srcs",
+        "//pkg/apimachinery/registered:all-srcs",
+    ],
+    tags = ["automanaged"],
 )

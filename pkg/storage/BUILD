@@ -54,7 +54,7 @@ go_test(
         "util_test.go",
         "watch_cache_test.go",
     ],
-    library = "go_default_library",
+    library = ":go_default_library",
     tags = ["automanaged"],
     deps = [
         "//pkg/api:go_default_library",
@@ -98,4 +98,23 @@ go_test(
         "//pkg/watch:go_default_library",
         "//vendor:golang.org/x/net/context",
     ],
+)
+
+filegroup(
+    name = "package-srcs",
+    srcs = glob(["**"]),
+    tags = ["automanaged"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "all-srcs",
+    srcs = [
+        ":package-srcs",
+        "//pkg/storage/etcd:all-srcs",
+        "//pkg/storage/etcd3:all-srcs",
+        "//pkg/storage/storagebackend:all-srcs",
+        "//pkg/storage/testing:all-srcs",
+    ],
+    tags = ["automanaged"],
 )

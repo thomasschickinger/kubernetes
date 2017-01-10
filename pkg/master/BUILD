@@ -52,7 +52,6 @@ go_library(
         "//pkg/client/clientset_generated/clientset/typed/core/v1:go_default_library",
         "//pkg/client/clientset_generated/internalclientset/typed/core/internalversion:go_default_library",
         "//pkg/genericapiserver:go_default_library",
-        "//pkg/healthz:go_default_library",
         "//pkg/kubelet/client:go_default_library",
         "//pkg/master/thirdparty:go_default_library",
         "//pkg/registry/apps/rest:go_default_library",
@@ -82,6 +81,7 @@ go_library(
         "//pkg/util/wait:go_default_library",
         "//vendor:github.com/golang/glog",
         "//vendor:github.com/prometheus/client_golang/prometheus",
+        "//vendor:k8s.io/apiserver/pkg/healthz",
     ],
 )
 
@@ -92,7 +92,7 @@ go_test(
         "import_known_versions_test.go",
         "master_test.go",
     ],
-    library = "go_default_library",
+    library = ":go_default_library",
     tags = ["automanaged"],
     deps = [
         "//pkg/api:go_default_library",
@@ -117,6 +117,7 @@ go_test(
         "//pkg/client/testing/core:go_default_library",
         "//pkg/generated/openapi:go_default_library",
         "//pkg/genericapiserver:go_default_library",
+        "//pkg/genericapiserver/api/request:go_default_library",
         "//pkg/kubelet/client:go_default_library",
         "//pkg/runtime:go_default_library",
         "//pkg/runtime/schema:go_default_library",
@@ -131,4 +132,21 @@ go_test(
         "//vendor:github.com/go-openapi/validate",
         "//vendor:github.com/stretchr/testify/assert",
     ],
+)
+
+filegroup(
+    name = "package-srcs",
+    srcs = glob(["**"]),
+    tags = ["automanaged"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "all-srcs",
+    srcs = [
+        ":package-srcs",
+        "//pkg/master/ports:all-srcs",
+        "//pkg/master/thirdparty:all-srcs",
+    ],
+    tags = ["automanaged"],
 )

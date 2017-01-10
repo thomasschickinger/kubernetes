@@ -12,12 +12,25 @@ go_library(
     srcs = ["etcd.go"],
     tags = ["automanaged"],
     deps = [
-        "//pkg/api:go_default_library",
         "//pkg/api/rest:go_default_library",
         "//pkg/apis/certificates:go_default_library",
+        "//pkg/genericapiserver/api/request:go_default_library",
         "//pkg/registry/certificates/certificates:go_default_library",
         "//pkg/registry/generic:go_default_library",
         "//pkg/registry/generic/registry:go_default_library",
         "//pkg/runtime:go_default_library",
     ],
+)
+
+filegroup(
+    name = "package-srcs",
+    srcs = glob(["**"]),
+    tags = ["automanaged"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "all-srcs",
+    srcs = [":package-srcs"],
+    tags = ["automanaged"],
 )

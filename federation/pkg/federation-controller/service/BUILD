@@ -53,7 +53,7 @@ go_test(
         "service_helper_test.go",
         "servicecontroller_test.go",
     ],
-    library = "go_default_library",
+    library = ":go_default_library",
     tags = ["automanaged"],
     deps = [
         "//federation/apis/federation/v1beta1:go_default_library",
@@ -61,4 +61,17 @@ go_test(
         "//pkg/api/v1:go_default_library",
         "//pkg/util/sets:go_default_library",
     ],
+)
+
+filegroup(
+    name = "package-srcs",
+    srcs = glob(["**"]),
+    tags = ["automanaged"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "all-srcs",
+    srcs = [":package-srcs"],
+    tags = ["automanaged"],
 )

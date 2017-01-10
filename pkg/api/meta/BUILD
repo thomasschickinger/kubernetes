@@ -43,7 +43,7 @@ go_test(
         "priority_test.go",
         "restmapper_test.go",
     ],
-    library = "go_default_library",
+    library = ":go_default_library",
     tags = ["automanaged"],
     deps = [
         "//pkg/runtime:go_default_library",
@@ -73,4 +73,20 @@ go_test(
         "//pkg/util/sets:go_default_library",
         "//vendor:github.com/google/gofuzz",
     ],
+)
+
+filegroup(
+    name = "package-srcs",
+    srcs = glob(["**"]),
+    tags = ["automanaged"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "all-srcs",
+    srcs = [
+        ":package-srcs",
+        "//pkg/api/meta/metatypes:all-srcs",
+    ],
+    tags = ["automanaged"],
 )

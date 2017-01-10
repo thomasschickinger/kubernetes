@@ -22,8 +22,8 @@ go_library(
     tags = ["automanaged"],
     deps = [
         "//pkg/apis/meta/v1:go_default_library",
-        "//pkg/apiserver/handlers/responsewriters:go_default_library",
-        "//pkg/apiserver/metrics:go_default_library",
+        "//pkg/genericapiserver/api/handlers/responsewriters:go_default_library",
+        "//pkg/genericapiserver/api/metrics:go_default_library",
         "//pkg/genericapiserver/mux:go_default_library",
         "//pkg/genericapiserver/openapi:go_default_library",
         "//pkg/genericapiserver/openapi/common:go_default_library",
@@ -36,4 +36,20 @@ go_library(
         "//vendor:github.com/golang/glog",
         "//vendor:github.com/prometheus/client_golang/prometheus",
     ],
+)
+
+filegroup(
+    name = "package-srcs",
+    srcs = glob(["**"]),
+    tags = ["automanaged"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "all-srcs",
+    srcs = [
+        ":package-srcs",
+        "//pkg/genericapiserver/routes/data/swagger:all-srcs",
+    ],
+    tags = ["automanaged"],
 )

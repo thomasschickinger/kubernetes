@@ -37,6 +37,7 @@ import (
 	pathvalidation "k8s.io/kubernetes/pkg/api/validation/path"
 	metav1 "k8s.io/kubernetes/pkg/apis/meta/v1"
 	"k8s.io/kubernetes/pkg/client/metrics"
+	restclientwatch "k8s.io/kubernetes/pkg/client/restclient/watch"
 	"k8s.io/kubernetes/pkg/fields"
 	"k8s.io/kubernetes/pkg/labels"
 	"k8s.io/kubernetes/pkg/runtime"
@@ -46,7 +47,6 @@ import (
 	"k8s.io/kubernetes/pkg/util/net"
 	"k8s.io/kubernetes/pkg/util/sets"
 	"k8s.io/kubernetes/pkg/watch"
-	"k8s.io/kubernetes/pkg/watch/versioned"
 )
 
 var (
@@ -683,7 +683,7 @@ func (r *Request) Watch() (watch.Interface, error) {
 	}
 	framer := r.serializers.Framer.NewFrameReader(resp.Body)
 	decoder := streaming.NewDecoder(framer, r.serializers.StreamingSerializer)
-	return watch.NewStreamWatcher(versioned.NewDecoder(decoder, r.serializers.Decoder)), nil
+	return watch.NewStreamWatcher(restclientwatch.NewDecoder(decoder, r.serializers.Decoder)), nil
 }
 
 // updateURLMetrics is a convenience function for pushing metrics.
@@ -811,7 +811,20 @@ func (r *Request) request(fn func(*http.Request, *http.Response)) error {
 			r.backoffMgr.UpdateBackoff(r.URL(), err, resp.StatusCode)
 		}
 		if err != nil {
-			return err
+			// "Connection reset by peer" is usually a transient error.
+			// Thus in case of "GET" operations, we simply retry it.
+			// We are not automatically retrying "write" operations, as
+			// they are not idempotent.
+			if !net.IsConnectionReset(err) || r.verb != "GET" {
+				return err
+			}
+			// For the purpose of retry, we set the artificial "retry-after" response.
+			// TODO: Should we clean the original response if it exists?
+			resp = &http.Response{
+				StatusCode: http.StatusInternalServerError,
+				Header:     http.Header{"Retry-After": []string{"1"}},
+				Body:       ioutil.NopCloser(bytes.NewReader([]byte{})),
+			}
 		}
 
 		done := func() bool {

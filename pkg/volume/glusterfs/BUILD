@@ -25,7 +25,6 @@ go_library(
         "//pkg/apis/storage/v1beta1/util:go_default_library",
         "//pkg/client/clientset_generated/clientset:go_default_library",
         "//pkg/labels:go_default_library",
-        "//pkg/registry/core/service/allocator:go_default_library",
         "//pkg/types:go_default_library",
         "//pkg/util/exec:go_default_library",
         "//pkg/util/mount:go_default_library",
@@ -45,7 +44,7 @@ go_test(
         "glusterfs_minmax_test.go",
         "glusterfs_test.go",
     ],
-    library = "go_default_library",
+    library = ":go_default_library",
     tags = ["automanaged"],
     deps = [
         "//pkg/api/v1:go_default_library",
@@ -58,5 +57,19 @@ go_test(
         "//pkg/util/testing:go_default_library",
         "//pkg/volume:go_default_library",
         "//pkg/volume/testing:go_default_library",
+        "//vendor:github.com/heketi/heketi/pkg/glusterfs/api",
     ],
+)
+
+filegroup(
+    name = "package-srcs",
+    srcs = glob(["**"]),
+    tags = ["automanaged"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "all-srcs",
+    srcs = [":package-srcs"],
+    tags = ["automanaged"],
 )

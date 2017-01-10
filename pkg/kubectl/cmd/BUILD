@@ -30,6 +30,7 @@ go_library(
         "create_namespace.go",
         "create_pdb.go",
         "create_quota.go",
+        "create_rolebinding.go",
         "create_secret.go",
         "create_service.go",
         "create_serviceaccount.go",
@@ -101,6 +102,7 @@ go_library(
         "//pkg/util/errors:go_default_library",
         "//pkg/util/exec:go_default_library",
         "//pkg/util/flag:go_default_library",
+        "//pkg/util/i18n:go_default_library",
         "//pkg/util/interrupt:go_default_library",
         "//pkg/util/intstr:go_default_library",
         "//pkg/util/sets:go_default_library",
@@ -164,7 +166,7 @@ go_test(
         "//examples:config",
         "//test/fixtures",
     ],
-    library = "go_default_library",
+    library = ":go_default_library",
     tags = [
         "automanaged",
     ],
@@ -185,6 +187,7 @@ go_test(
         "//pkg/apis/policy:go_default_library",
         "//pkg/client/restclient:go_default_library",
         "//pkg/client/restclient/fake:go_default_library",
+        "//pkg/client/restclient/watch:go_default_library",
         "//pkg/client/typed/dynamic:go_default_library",
         "//pkg/kubectl:go_default_library",
         "//pkg/kubectl/cmd/testing:go_default_library",
@@ -201,9 +204,29 @@ go_test(
         "//pkg/util/term:go_default_library",
         "//pkg/util/wait:go_default_library",
         "//pkg/watch:go_default_library",
-        "//pkg/watch/versioned:go_default_library",
         "//vendor:github.com/spf13/cobra",
         "//vendor:github.com/stretchr/testify/assert",
         "//vendor:k8s.io/heapster/metrics/apis/metrics/v1alpha1",
     ],
+)
+
+filegroup(
+    name = "package-srcs",
+    srcs = glob(["**"]),
+    tags = ["automanaged"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "all-srcs",
+    srcs = [
+        ":package-srcs",
+        "//pkg/kubectl/cmd/config:all-srcs",
+        "//pkg/kubectl/cmd/rollout:all-srcs",
+        "//pkg/kubectl/cmd/set:all-srcs",
+        "//pkg/kubectl/cmd/templates:all-srcs",
+        "//pkg/kubectl/cmd/testing:all-srcs",
+        "//pkg/kubectl/cmd/util:all-srcs",
+    ],
+    tags = ["automanaged"],
 )

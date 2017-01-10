@@ -27,6 +27,7 @@ import (
 	"k8s.io/kubernetes/pkg/genericapiserver"
 	"k8s.io/kubernetes/pkg/genericapiserver/authorizer"
 	genericoptions "k8s.io/kubernetes/pkg/genericapiserver/options"
+	kubeoptions "k8s.io/kubernetes/pkg/kubeapiserver/options"
 	"k8s.io/kubernetes/pkg/registry/generic"
 	"k8s.io/kubernetes/pkg/runtime/schema"
 	"k8s.io/kubernetes/pkg/storage/storagebackend"
@@ -60,7 +61,8 @@ type ServerRunOptions struct {
 	Etcd                    *genericoptions.EtcdOptions
 	SecureServing           *genericoptions.SecureServingOptions
 	InsecureServing         *genericoptions.ServingOptions
-	Authentication          *genericoptions.BuiltInAuthenticationOptions
+	Authentication          *kubeoptions.BuiltInAuthenticationOptions
+	CloudProvider           *kubeoptions.CloudProviderOptions
 }
 
 func NewServerRunOptions() *ServerRunOptions {
@@ -69,7 +71,8 @@ func NewServerRunOptions() *ServerRunOptions {
 		Etcd:            genericoptions.NewEtcdOptions(),
 		SecureServing:   genericoptions.NewSecureServingOptions(),
 		InsecureServing: genericoptions.NewInsecureServingOptions(),
-		Authentication:  genericoptions.NewBuiltInAuthenticationOptions().WithAll(),
+		Authentication:  kubeoptions.NewBuiltInAuthenticationOptions().WithAll(),
+		CloudProvider:   kubeoptions.NewCloudProviderOptions(),
 	}
 	s.InsecureServing.BindPort = InsecurePort
 	s.SecureServing.ServingOptions.BindPort = SecurePort
@@ -81,7 +84,7 @@ func (serverOptions *ServerRunOptions) Run(stopCh <-chan struct{}) error {
 	serverOptions.Etcd.StorageConfig.ServerList = []string{"http://127.0.0.1:2379"}
 
 	// set defaults
-	if err := serverOptions.GenericServerRunOptions.DefaultExternalHost(); err != nil {
+	if err := serverOptions.CloudProvider.DefaultExternalHost(serverOptions.GenericServerRunOptions); err != nil {
 		return err
 	}
 	if err := serverOptions.SecureServing.MaybeDefaultWithSelfSignedCerts(serverOptions.GenericServerRunOptions.AdvertiseAddress.String()); err != nil {
@@ -107,7 +110,7 @@ func (serverOptions *ServerRunOptions) Run(stopCh <-chan struct{}) error {
 	if _, err := config.ApplySecureServingOptions(serverOptions.SecureServing); err != nil {
 		return fmt.Errorf("failed to configure https: %s", err)
 	}
-	if _, err := config.ApplyAuthenticationOptions(serverOptions.Authentication); err != nil {
+	if err := serverOptions.Authentication.Apply(config); err != nil {
 		return fmt.Errorf("failed to configure authentication: %s", err)
 	}
 

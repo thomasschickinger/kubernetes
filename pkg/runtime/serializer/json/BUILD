@@ -29,9 +29,8 @@ go_library(
 go_test(
     name = "go_default_test",
     srcs = ["meta_test.go"],
-    library = "go_default_library",
+    library = ":go_default_library",
     tags = ["automanaged"],
-    deps = [],
 )
 
 go_test(
@@ -44,4 +43,17 @@ go_test(
         "//pkg/runtime/serializer/json:go_default_library",
         "//pkg/util/diff:go_default_library",
     ],
+)
+
+filegroup(
+    name = "package-srcs",
+    srcs = glob(["**"]),
+    tags = ["automanaged"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "all-srcs",
+    srcs = [":package-srcs"],
+    tags = ["automanaged"],
 )

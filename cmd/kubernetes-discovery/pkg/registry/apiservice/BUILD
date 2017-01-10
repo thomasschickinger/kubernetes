@@ -16,10 +16,27 @@ go_library(
         "//cmd/kubernetes-discovery/pkg/apis/apiregistration/validation:go_default_library",
         "//pkg/api:go_default_library",
         "//pkg/fields:go_default_library",
+        "//pkg/genericapiserver/api/request:go_default_library",
         "//pkg/labels:go_default_library",
         "//pkg/registry/generic:go_default_library",
         "//pkg/runtime:go_default_library",
         "//pkg/storage:go_default_library",
         "//pkg/util/validation/field:go_default_library",
     ],
+)
+
+filegroup(
+    name = "package-srcs",
+    srcs = glob(["**"]),
+    tags = ["automanaged"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "all-srcs",
+    srcs = [
+        ":package-srcs",
+        "//cmd/kubernetes-discovery/pkg/registry/apiservice/etcd:all-srcs",
+    ],
+    tags = ["automanaged"],
 )

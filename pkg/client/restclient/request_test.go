@@ -22,12 +22,14 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"os"
 	"reflect"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
@@ -37,6 +39,7 @@ import (
 	"k8s.io/kubernetes/pkg/api/v1"
 	"k8s.io/kubernetes/pkg/apimachinery/registered"
 	metav1 "k8s.io/kubernetes/pkg/apis/meta/v1"
+	restclientwatch "k8s.io/kubernetes/pkg/client/restclient/watch"
 	"k8s.io/kubernetes/pkg/labels"
 	"k8s.io/kubernetes/pkg/runtime"
 	"k8s.io/kubernetes/pkg/runtime/schema"
@@ -48,7 +51,6 @@ import (
 	"k8s.io/kubernetes/pkg/util/intstr"
 	utiltesting "k8s.io/kubernetes/pkg/util/testing"
 	"k8s.io/kubernetes/pkg/watch"
-	"k8s.io/kubernetes/pkg/watch/versioned"
 )
 
 func TestNewRequestSetsAccept(t *testing.T) {
@@ -1120,6 +1122,35 @@ func TestCheckRetryClosesBody(t *testing.T) {
 	}
 }
 
+func TestConnectionResetByPeerIsRetried(t *testing.T) {
+	count := 0
+	backoff := &testBackoffManager{}
+	req := &Request{
+		verb: "GET",
+		client: clientFunc(func(req *http.Request) (*http.Response, error) {
+			count++
+			if count >= 3 {
+				return &http.Response{
+					StatusCode: 200,
+					Body:       ioutil.NopCloser(bytes.NewReader([]byte{})),
+				}, nil
+			}
+			return nil, &net.OpError{Err: syscall.ECONNRESET}
+		}),
+		backoffMgr: backoff,
+	}
+	// We expect two retries of "connection reset by peer" and the success.
+	_, err := req.Do().Raw()
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
+	// We have a sleep before each retry (including the initial one) and for
+	// every "retry-after" call - thus 5 together.
+	if len(backoff.sleeps) != 5 {
+		t.Errorf("Expected 5 retries, got: %d", len(backoff.sleeps))
+	}
+}
+
 func TestCheckRetryHandles429And5xx(t *testing.T) {
 	count := 0
 	ch := make(chan struct{})
@@ -1540,7 +1571,7 @@ func TestWatch(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 		flusher.Flush()
 
-		encoder := versioned.NewEncoder(streaming.NewEncoder(w, testapi.Default.Codec()), testapi.Default.Codec())
+		encoder := restclientwatch.NewEncoder(streaming.NewEncoder(w, testapi.Default.Codec()), testapi.Default.Codec())
 		for _, item := range table {
 			if err := encoder.Encode(&watch.Event{Type: item.t, Object: item.obj}); err != nil {
 				panic(err)

@@ -31,6 +31,7 @@ go_library(
         "//pkg/credentialprovider/aws:go_default_library",
         "//pkg/types:go_default_library",
         "//pkg/util/sets:go_default_library",
+        "//pkg/util/wait:go_default_library",
         "//pkg/volume:go_default_library",
         "//vendor:github.com/aws/aws-sdk-go/aws",
         "//vendor:github.com/aws/aws-sdk-go/aws/awserr",
@@ -54,7 +55,7 @@ go_test(
         "device_allocator_test.go",
         "retry_handler_test.go",
     ],
-    library = "go_default_library",
+    library = ":go_default_library",
     tags = ["automanaged"],
     deps = [
         "//pkg/api/v1:go_default_library",
@@ -69,4 +70,17 @@ go_test(
         "//vendor:github.com/stretchr/testify/assert",
         "//vendor:github.com/stretchr/testify/mock",
     ],
+)
+
+filegroup(
+    name = "package-srcs",
+    srcs = glob(["**"]),
+    tags = ["automanaged"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "all-srcs",
+    srcs = [":package-srcs"],
+    tags = ["automanaged"],
 )

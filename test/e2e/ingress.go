@@ -21,6 +21,9 @@ import (
 	"path/filepath"
 	"time"
 
+	rbacv1alpha1 "k8s.io/kubernetes/pkg/apis/rbac/v1alpha1"
+	"k8s.io/kubernetes/pkg/runtime/schema"
+	"k8s.io/kubernetes/pkg/serviceaccount"
 	"k8s.io/kubernetes/test/e2e/framework"
 
 	. "github.com/onsi/ginkgo"
@@ -37,16 +40,8 @@ const (
 	// healthz port used to verify glbc restarted correctly on the master.
 	glbcHealthzPort = 8086
 
-	// On average it takes ~6 minutes for a single backend to come online in GCE.
-	lbPollTimeout = 15 * time.Minute
-
 	// General cloud resource poll timeout (eg: create static ip, firewall etc)
 	cloudResourcePollTimeout = 5 * time.Minute
-
-	// Time required by the loadbalancer to cleanup, proportional to numApps/Ing.
-	// Bring the cleanup timeout back down to 5m once b/33588344 is resolved.
-	lbCleanupTimeout = 15 * time.Minute
-	lbPollInterval   = 30 * time.Second
 
 	// Name of the config-map and key the ingress controller stores its uid in.
 	uidConfigMap = "ingress-uid"
@@ -70,6 +65,16 @@ var _ = framework.KubeDescribe("Loadbalancing: L7", func() {
 		f.BeforeEach()
 		jig = newTestJig(f.ClientSet)
 		ns = f.Namespace.Name
+
+		// this test wants powerful permissions.  Since the namespace names are unique, we can leave this
+		// lying around so we don't have to race any caches
+		framework.BindClusterRole(jig.client.Rbac(), "cluster-admin", f.Namespace.Name,
+			rbacv1alpha1.Subject{Kind: rbacv1alpha1.ServiceAccountKind, Namespace: f.Namespace.Name, Name: "default"})
+
+		err := framework.WaitForAuthorizationUpdate(jig.client.Authorization(),
+			serviceaccount.MakeUsername(f.Namespace.Name, "default"),
+			"", "create", schema.GroupResource{Resource: "pods"}, true)
+		framework.ExpectNoError(err)
 	})
 
 	// Before enabling this loadbalancer test in any other test list you must
@@ -132,10 +137,10 @@ var _ = framework.KubeDescribe("Loadbalancing: L7", func() {
 
 			By("waiting for Ingress to come up with ip: " + ip)
 			httpClient := buildInsecureClient(reqTimeout)
-			framework.ExpectNoError(pollURL(fmt.Sprintf("https://%v/", ip), "", lbPollTimeout, jig.pollInterval, httpClient, false))
+			framework.ExpectNoError(pollURL(fmt.Sprintf("https://%v/", ip), "", framework.LoadBalancerPollTimeout, jig.pollInterval, httpClient, false))
 
 			By("should reject HTTP traffic")
-			framework.ExpectNoError(pollURL(fmt.Sprintf("http://%v/", ip), "", lbPollTimeout, jig.pollInterval, httpClient, true))
+			framework.ExpectNoError(pollURL(fmt.Sprintf("http://%v/", ip), "", framework.LoadBalancerPollTimeout, jig.pollInterval, httpClient, true))
 
 			By("should have correct firewall rule for ingress")
 			fw := gceController.getFirewallRule()

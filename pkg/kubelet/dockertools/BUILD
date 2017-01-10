@@ -84,6 +84,7 @@ go_test(
     srcs = [
         "container_gc_test.go",
         "convert_test.go",
+        "docker_manager_linux_test.go",
         "docker_manager_test.go",
         "docker_test.go",
         "images_test.go",
@@ -93,7 +94,7 @@ go_test(
         "fixtures/seccomp/sub/subtest",
         "fixtures/seccomp/test",
     ],
-    library = "go_default_library",
+    library = ":go_default_library",
     tags = [
         "automanaged",
     ],
@@ -133,4 +134,17 @@ go_test(
         "//vendor:github.com/google/cadvisor/info/v1",
         "//vendor:github.com/stretchr/testify/assert",
     ],
+)
+
+filegroup(
+    name = "package-srcs",
+    srcs = glob(["**"]),
+    tags = ["automanaged"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "all-srcs",
+    srcs = [":package-srcs"],
+    tags = ["automanaged"],
 )

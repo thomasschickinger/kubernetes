@@ -21,10 +21,10 @@ import (
 	"fmt"
 
 	"github.com/golang/glog"
-	"k8s.io/kubernetes/pkg/api"
+	"k8s.io/apiserver/pkg/authentication/user"
 	apierrors "k8s.io/kubernetes/pkg/api/errors"
 	"k8s.io/kubernetes/pkg/apis/rbac"
-	"k8s.io/kubernetes/pkg/auth/user"
+	genericapirequest "k8s.io/kubernetes/pkg/genericapiserver/api/request"
 	"k8s.io/kubernetes/pkg/serviceaccount"
 	utilerrors "k8s.io/kubernetes/pkg/util/errors"
 )
@@ -41,14 +41,14 @@ type AuthorizationRuleResolver interface {
 }
 
 // ConfirmNoEscalation determines if the roles for a given user in a given namespace encompass the provided role.
-func ConfirmNoEscalation(ctx api.Context, ruleResolver AuthorizationRuleResolver, rules []rbac.PolicyRule) error {
+func ConfirmNoEscalation(ctx genericapirequest.Context, ruleResolver AuthorizationRuleResolver, rules []rbac.PolicyRule) error {
 	ruleResolutionErrors := []error{}
 
-	user, ok := api.UserFrom(ctx)
+	user, ok := genericapirequest.UserFrom(ctx)
 	if !ok {
 		return fmt.Errorf("no user on context")
 	}
-	namespace, _ := api.NamespaceFrom(ctx)
+	namespace, _ := genericapirequest.NamespaceFrom(ctx)
 
 	ownerRules, err := ruleResolver.RulesFor(user, namespace)
 	if err != nil {
@@ -59,7 +59,7 @@ func ConfirmNoEscalation(ctx api.Context, ruleResolver AuthorizationRuleResolver
 
 	ownerRightsCover, missingRights := Covers(ownerRules, rules)
 	if !ownerRightsCover {
-		user, _ := api.UserFrom(ctx)
+		user, _ := genericapirequest.UserFrom(ctx)
 		return apierrors.NewUnauthorized(fmt.Sprintf("attempt to grant extra privileges: %v user=%v ownerrules=%v ruleResolutionErrors=%v", missingRights, user, ownerRules, ruleResolutionErrors))
 	}
 	return nil
@@ -168,7 +168,7 @@ func appliesTo(user user.Info, bindingSubjects []rbac.Subject, namespace string)
 func appliesToUser(user user.Info, subject rbac.Subject, namespace string) bool {
 	switch subject.Kind {
 	case rbac.UserKind:
-		return subject.Name == rbac.UserAll || user.GetName() == subject.Name
+		return user.GetName() == subject.Name
 
 	case rbac.GroupKind:
 		return has(user.GetGroups(), subject.Name)

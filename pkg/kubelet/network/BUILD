@@ -33,10 +33,31 @@ go_library(
 go_test(
     name = "go_default_test",
     srcs = ["plugins_test.go"],
-    library = "go_default_library",
+    library = ":go_default_library",
     tags = ["automanaged"],
     deps = [
         "//pkg/apis/componentconfig:go_default_library",
         "//pkg/kubelet/network/testing:go_default_library",
     ],
+)
+
+filegroup(
+    name = "package-srcs",
+    srcs = glob(["**"]),
+    tags = ["automanaged"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "all-srcs",
+    srcs = [
+        ":package-srcs",
+        "//pkg/kubelet/network/cni:all-srcs",
+        "//pkg/kubelet/network/hairpin:all-srcs",
+        "//pkg/kubelet/network/hostport:all-srcs",
+        "//pkg/kubelet/network/kubenet:all-srcs",
+        "//pkg/kubelet/network/mock_network:all-srcs",
+        "//pkg/kubelet/network/testing:all-srcs",
+    ],
+    tags = ["automanaged"],
 )

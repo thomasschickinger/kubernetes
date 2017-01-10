@@ -57,7 +57,7 @@ go_test(
         "handlers_test.go",
         "meta_test.go",
     ],
-    library = "go_default_library",
+    library = ":go_default_library",
     tags = ["automanaged"],
     deps = [
         "//federation/apis/federation/v1beta1:go_default_library",
@@ -73,4 +73,24 @@ go_test(
         "//pkg/watch:go_default_library",
         "//vendor:github.com/stretchr/testify/assert",
     ],
+)
+
+filegroup(
+    name = "package-srcs",
+    srcs = glob(["**"]),
+    tags = ["automanaged"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "all-srcs",
+    srcs = [
+        ":package-srcs",
+        "//federation/pkg/federation-controller/util/deletionhelper:all-srcs",
+        "//federation/pkg/federation-controller/util/eventsink:all-srcs",
+        "//federation/pkg/federation-controller/util/planner:all-srcs",
+        "//federation/pkg/federation-controller/util/podanalyzer:all-srcs",
+        "//federation/pkg/federation-controller/util/test:all-srcs",
+    ],
+    tags = ["automanaged"],
 )

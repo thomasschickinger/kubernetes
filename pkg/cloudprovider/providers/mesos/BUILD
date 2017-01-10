@@ -39,7 +39,7 @@ go_test(
         "config_test.go",
         "mesos_test.go",
     ],
-    library = "go_default_library",
+    library = ":go_default_library",
     tags = ["automanaged"],
     deps = [
         "//pkg/cloudprovider:go_default_library",
@@ -50,4 +50,17 @@ go_test(
         "//vendor:github.com/mesos/mesos-go/mesosutil",
         "//vendor:golang.org/x/net/context",
     ],
+)
+
+filegroup(
+    name = "package-srcs",
+    srcs = glob(["**"]),
+    tags = ["automanaged"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "all-srcs",
+    srcs = [":package-srcs"],
+    tags = ["automanaged"],
 )

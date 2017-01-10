@@ -16,9 +16,23 @@ go_test(
         "//federation/cmd/federation-apiserver/app:go_default_library",
         "//federation/cmd/federation-apiserver/app/options:go_default_library",
         "//pkg/api/v1:go_default_library",
+        "//pkg/apis/batch/v1:go_default_library",
         "//pkg/apis/extensions/v1beta1:go_default_library",
         "//pkg/apis/meta/v1:go_default_library",
         "//pkg/runtime/schema:go_default_library",
         "//vendor:github.com/stretchr/testify/assert",
     ],
+)
+
+filegroup(
+    name = "package-srcs",
+    srcs = glob(["**"]),
+    tags = ["automanaged"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "all-srcs",
+    srcs = [":package-srcs"],
+    tags = ["automanaged"],
 )

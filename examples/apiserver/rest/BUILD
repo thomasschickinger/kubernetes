@@ -15,6 +15,7 @@ go_library(
         "//cmd/libs/go2idl/client-gen/test_apis/testgroup:go_default_library",
         "//pkg/api:go_default_library",
         "//pkg/fields:go_default_library",
+        "//pkg/genericapiserver/api/request:go_default_library",
         "//pkg/labels:go_default_library",
         "//pkg/registry/generic:go_default_library",
         "//pkg/registry/generic/registry:go_default_library",
@@ -22,4 +23,17 @@ go_library(
         "//pkg/storage:go_default_library",
         "//pkg/util/validation/field:go_default_library",
     ],
+)
+
+filegroup(
+    name = "package-srcs",
+    srcs = glob(["**"]),
+    tags = ["automanaged"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "all-srcs",
+    srcs = [":package-srcs"],
+    tags = ["automanaged"],
 )

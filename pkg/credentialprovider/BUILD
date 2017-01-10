@@ -33,7 +33,24 @@ go_test(
         "keyring_test.go",
         "provider_test.go",
     ],
-    library = "go_default_library",
+    library = ":go_default_library",
     tags = ["automanaged"],
-    deps = [],
+)
+
+filegroup(
+    name = "package-srcs",
+    srcs = glob(["**"]),
+    tags = ["automanaged"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "all-srcs",
+    srcs = [
+        ":package-srcs",
+        "//pkg/credentialprovider/aws:all-srcs",
+        "//pkg/credentialprovider/azure:all-srcs",
+        "//pkg/credentialprovider/gcp:all-srcs",
+    ],
+    tags = ["automanaged"],
 )

@@ -24,6 +24,7 @@ import (
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/validation"
 	genericoptions "k8s.io/kubernetes/pkg/genericapiserver/options"
+	kubeoptions "k8s.io/kubernetes/pkg/kubeapiserver/options"
 	kubeletclient "k8s.io/kubernetes/pkg/kubelet/client"
 	"k8s.io/kubernetes/pkg/master/ports"
 	utilnet "k8s.io/kubernetes/pkg/util/net"
@@ -40,8 +41,9 @@ type ServerRunOptions struct {
 	Etcd                    *genericoptions.EtcdOptions
 	SecureServing           *genericoptions.SecureServingOptions
 	InsecureServing         *genericoptions.ServingOptions
-	Authentication          *genericoptions.BuiltInAuthenticationOptions
-	Authorization           *genericoptions.BuiltInAuthorizationOptions
+	Authentication          *kubeoptions.BuiltInAuthenticationOptions
+	Authorization           *kubeoptions.BuiltInAuthorizationOptions
+	CloudProvider           *kubeoptions.CloudProviderOptions
 
 	AllowPrivileged           bool
 	EventTTL                  time.Duration
@@ -62,8 +64,9 @@ func NewServerRunOptions() *ServerRunOptions {
 		Etcd:            genericoptions.NewEtcdOptions(),
 		SecureServing:   genericoptions.NewSecureServingOptions(),
 		InsecureServing: genericoptions.NewInsecureServingOptions(),
-		Authentication:  genericoptions.NewBuiltInAuthenticationOptions().WithAll(),
-		Authorization:   genericoptions.NewBuiltInAuthorizationOptions(),
+		Authentication:  kubeoptions.NewBuiltInAuthenticationOptions().WithAll(),
+		Authorization:   kubeoptions.NewBuiltInAuthorizationOptions(),
+		CloudProvider:   kubeoptions.NewCloudProviderOptions(),
 
 		EventTTL:    1 * time.Hour,
 		MasterCount: 1,
@@ -95,6 +98,7 @@ func (s *ServerRunOptions) AddFlags(fs *pflag.FlagSet) {
 	s.InsecureServing.AddDeprecatedFlags(fs)
 	s.Authentication.AddFlags(fs)
 	s.Authorization.AddFlags(fs)
+	s.CloudProvider.AddFlags(fs)
 
 	// Note: the weird ""+ in below lines seems to be the only way to get gofmt to
 	// arrange these text blocks sensibly. Grrr.

@@ -32,6 +32,7 @@ go_library(
         "quota.go",
         "resource_filter.go",
         "resource_printer.go",
+        "rolebinding.go",
         "rollback.go",
         "rolling_updater.go",
         "rollout_status.go",
@@ -143,7 +144,7 @@ go_test(
         "sorting_printer_test.go",
         "stop_test.go",
     ],
-    library = "go_default_library",
+    library = ":go_default_library",
     tags = ["automanaged"],
     deps = [
         "//federation/apis/federation:go_default_library",
@@ -184,4 +185,23 @@ go_test(
         "//vendor:github.com/ghodss/yaml",
         "//vendor:github.com/spf13/cobra",
     ],
+)
+
+filegroup(
+    name = "package-srcs",
+    srcs = glob(["**"]),
+    tags = ["automanaged"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "all-srcs",
+    srcs = [
+        ":package-srcs",
+        "//pkg/kubectl/cmd:all-srcs",
+        "//pkg/kubectl/metricsutil:all-srcs",
+        "//pkg/kubectl/resource:all-srcs",
+        "//pkg/kubectl/testing:all-srcs",
+    ],
+    tags = ["automanaged"],
 )

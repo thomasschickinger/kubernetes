@@ -23,7 +23,6 @@ readonly KUBE_GOPATH="${KUBE_OUTPUT}/go"
 # kube::build::source_targets in build/common.sh as well.
 kube::golang::server_targets() {
   local targets=(
-    cmd/kube-dns
     cmd/kube-proxy
     cmd/kube-apiserver
     cmd/kube-controller-manager
@@ -40,8 +39,22 @@ kube::golang::server_targets() {
 readonly KUBE_SERVER_TARGETS=($(kube::golang::server_targets))
 readonly KUBE_SERVER_BINARIES=("${KUBE_SERVER_TARGETS[@]##*/}")
 
+# The set of server targets that we are only building for Kubernetes nodes 
+kube::golang::node_targets() {
+  local targets=(
+    cmd/kube-proxy
+    cmd/kubelet
+  )
+  echo "${targets[@]}"
+}
+
+readonly KUBE_NODE_TARGETS=($(kube::golang::node_targets))
+readonly KUBE_NODE_BINARIES=("${KUBE_NODE_TARGETS[@]##*/}")
+readonly KUBE_NODE_BINARIES_WIN=("${KUBE_NODE_BINARIES[@]/%/.exe}")
+
 if [[ "${KUBE_FASTBUILD:-}" == "true" ]]; then
   readonly KUBE_SERVER_PLATFORMS=(linux/amd64)
+  readonly KUBE_NODE_PLATFORMS=(linux/amd64)
   if [[ "${KUBE_BUILDER_OS:-}" == "darwin"* ]]; then
     readonly KUBE_TEST_PLATFORMS=(
       darwin/amd64
@@ -68,6 +81,19 @@ else
     KUBE_SERVER_PLATFORMS+=(linux/ppc64le)
   fi
   readonly KUBE_SERVER_PLATFORMS
+
+  # The node platforms we build for
+  KUBE_NODE_PLATFORMS=(
+    linux/amd64
+    linux/arm
+    linux/arm64
+    linux/s390x
+    windows/amd64
+  )
+  if [[ "${KUBE_BUILD_PPC64LE:-}" =~ ^[yY]$ ]]; then
+    KUBE_NODE_PLATFORMS+=(linux/ppc64le)
+  fi
+  readonly KUBE_NODE_PLATFORMS
 
   # If we update this we should also update the set of golang compilers we build
   # in 'build/build-image/cross/Dockerfile'. However, it's only a bit faster since go 1.5, not mandatory
@@ -162,7 +188,6 @@ readonly KUBE_ALL_BINARIES=("${KUBE_ALL_TARGETS[@]##*/}")
 readonly KUBE_STATIC_LIBRARIES=(
   kube-apiserver
   kube-controller-manager
-  kube-dns
   kube-scheduler
   kube-proxy
   kube-discovery
@@ -280,6 +305,12 @@ kube::golang::create_gopath_tree() {
   if [[ ! -e "${go_pkg_dir}" || "$(readlink ${go_pkg_dir})" != "${KUBE_ROOT}" ]]; then
     ln -snf "${KUBE_ROOT}" "${go_pkg_dir}"
   fi
+
+  cat >"${KUBE_GOPATH}/BUILD" <<EOF
+# This dummy BUILD file prevents Bazel from trying to descend through the
+# infinite loop created by the symlink at
+# ${go_pkg_dir}
+EOF
 }
 
 # Ensure the godep tool exists and is a viable version.

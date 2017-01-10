@@ -17,7 +17,7 @@ go_library(
         "helpers.go",
         "types.go",
     ],
-    library = "cgo_codegen",
+    library = ":cgo_codegen",
     tags = ["automanaged"],
     deps = [
         "//pkg/api:go_default_library",
@@ -31,6 +31,7 @@ go_library(
         "//pkg/kubelet/pod:go_default_library",
         "//pkg/kubelet/qos:go_default_library",
         "//pkg/kubelet/server/stats:go_default_library",
+        "//pkg/kubelet/types:go_default_library",
         "//pkg/kubelet/util/format:go_default_library",
         "//pkg/quota/evaluator/core:go_default_library",
         "//pkg/util/clock:go_default_library",
@@ -46,7 +47,7 @@ go_test(
         "eviction_manager_test.go",
         "helpers_test.go",
     ],
-    library = "go_default_library",
+    library = ":go_default_library",
     tags = ["automanaged"],
     deps = [
         "//pkg/api:go_default_library",
@@ -72,5 +73,18 @@ cgo_genrule(
         "-lpthread",
         "-ldl",
     ],
+    tags = ["automanaged"],
+)
+
+filegroup(
+    name = "package-srcs",
+    srcs = glob(["**"]),
+    tags = ["automanaged"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "all-srcs",
+    srcs = [":package-srcs"],
     tags = ["automanaged"],
 )

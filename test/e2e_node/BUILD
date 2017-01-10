@@ -70,7 +70,7 @@ go_test(
         "summary_test.go",
         "volume_manager_test.go",
     ],
-    library = "go_default_library",
+    library = ":go_default_library",
     tags = ["automanaged"],
     deps = [
         "//pkg/api/errors:go_default_library",
@@ -113,4 +113,26 @@ go_test(
         "//vendor:github.com/onsi/gomega/types",
         "//vendor:github.com/spf13/pflag",
     ],
+)
+
+filegroup(
+    name = "package-srcs",
+    srcs = glob(["**"]),
+    tags = ["automanaged"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "all-srcs",
+    srcs = [
+        ":package-srcs",
+        "//test/e2e_node/builder:all-srcs",
+        "//test/e2e_node/environment:all-srcs",
+        "//test/e2e_node/remote:all-srcs",
+        "//test/e2e_node/runner/local:all-srcs",
+        "//test/e2e_node/runner/remote:all-srcs",
+        "//test/e2e_node/services:all-srcs",
+        "//test/e2e_node/system:all-srcs",
+    ],
+    tags = ["automanaged"],
 )

@@ -24,7 +24,7 @@ import (
 	"github.com/golang/glog"
 
 	"k8s.io/kubernetes/pkg/client/cache"
-	clientset "k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
+	"k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	"k8s.io/kubernetes/pkg/runtime/schema"
 )
@@ -52,6 +52,7 @@ type SharedInformerFactory interface {
 	DaemonSets() DaemonSetInformer
 	Deployments() DeploymentInformer
 	ReplicaSets() ReplicaSetInformer
+	ReplicationControllers() ReplicationControllerInformer
 
 	ClusterRoleBindings() ClusterRoleBindingInformer
 	ClusterRoles() ClusterRoleInformer
@@ -149,6 +150,10 @@ func (f *sharedInformerFactory) Deployments() DeploymentInformer {
 
 func (f *sharedInformerFactory) ReplicaSets() ReplicaSetInformer {
 	return &replicaSetInformer{sharedInformerFactory: f}
+}
+
+func (f *sharedInformerFactory) ReplicationControllers() ReplicationControllerInformer {
+	return &replicationControllerInformer{sharedInformerFactory: f}
 }
 
 func (f *sharedInformerFactory) ClusterRoles() ClusterRoleInformer {

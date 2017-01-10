@@ -23,7 +23,7 @@ go_library(
 go_test(
     name = "go_default_test",
     srcs = ["eventsink_test.go"],
-    library = "go_default_library",
+    library = ":go_default_library",
     tags = ["automanaged"],
     deps = [
         "//federation/client/clientset_generated/federation_clientset/fake:go_default_library",
@@ -33,4 +33,17 @@ go_test(
         "//pkg/runtime:go_default_library",
         "//vendor:github.com/stretchr/testify/assert",
     ],
+)
+
+filegroup(
+    name = "package-srcs",
+    srcs = glob(["**"]),
+    tags = ["automanaged"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "all-srcs",
+    srcs = [":package-srcs"],
+    tags = ["automanaged"],
 )

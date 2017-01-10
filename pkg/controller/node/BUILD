@@ -57,7 +57,7 @@ go_test(
         "nodecontroller_test.go",
         "rate_limited_queue_test.go",
     ],
-    library = "go_default_library",
+    library = ":go_default_library",
     tags = ["automanaged"],
     deps = [
         "//pkg/api:go_default_library",
@@ -82,4 +82,20 @@ go_test(
         "//pkg/util/wait:go_default_library",
         "//vendor:github.com/golang/glog",
     ],
+)
+
+filegroup(
+    name = "package-srcs",
+    srcs = glob(["**"]),
+    tags = ["automanaged"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "all-srcs",
+    srcs = [
+        ":package-srcs",
+        "//pkg/controller/node/testutil:all-srcs",
+    ],
+    tags = ["automanaged"],
 )

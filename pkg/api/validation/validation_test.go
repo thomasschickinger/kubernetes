@@ -17,11 +17,9 @@ limitations under the License.
 package validation
 
 import (
-	"math/rand"
 	"reflect"
 	"strings"
 	"testing"
-	"time"
 
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/resource"
@@ -36,454 +34,21 @@ import (
 	"k8s.io/kubernetes/pkg/util/validation/field"
 )
 
+const (
+	dnsLabelErrMsg          = "a valid DNS (RFC 1123) label must consist of"
+	dnsSubdomainLabelErrMsg = "a valid DNS (RFC 1123) subdomain"
+	labelErrMsg             = "a valid label must be an empty string or consist of"
+	lowerCaseLabelErrMsg    = "a valid label must consist of"
+	maxLengthErrMsg         = "must be no more than"
+	namePartErrMsg          = "name part must consist of"
+	nameErrMsg              = "a qualified name must consist of"
+	idErrMsg                = "a valid C identifier must"
+)
+
 func expectPrefix(t *testing.T, prefix string, errs field.ErrorList) {
 	for i := range errs {
 		if f, p := errs[i].Field, prefix; !strings.HasPrefix(f, p) {
 			t.Errorf("expected prefix '%s' for field '%s' (%v)", p, f, errs[i])
-		}
-	}
-}
-
-// Ensure custom name functions are allowed
-func TestValidateObjectMetaCustomName(t *testing.T) {
-	errs := ValidateObjectMeta(
-		&api.ObjectMeta{Name: "test", GenerateName: "foo"},
-		false,
-		func(s string, prefix bool) []string {
-			if s == "test" {
-				return nil
-			}
-			return []string{"name-gen"}
-		},
-		field.NewPath("field"))
-	if len(errs) != 1 {
-		t.Fatalf("unexpected errors: %v", errs)
-	}
-	if !strings.Contains(errs[0].Error(), "name-gen") {
-		t.Errorf("unexpected error message: %v", errs)
-	}
-}
-
-// Ensure namespace names follow dns label format
-func TestValidateObjectMetaNamespaces(t *testing.T) {
-	errs := ValidateObjectMeta(
-		&api.ObjectMeta{Name: "test", Namespace: "foo.bar"},
-		true,
-		func(s string, prefix bool) []string {
-			return nil
-		},
-		field.NewPath("field"))
-	if len(errs) != 1 {
-		t.Fatalf("unexpected errors: %v", errs)
-	}
-	if !strings.Contains(errs[0].Error(), `Invalid value: "foo.bar"`) {
-		t.Errorf("unexpected error message: %v", errs)
-	}
-	maxLength := 63
-	letters := []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
-	b := make([]rune, maxLength+1)
-	for i := range b {
-		b[i] = letters[rand.Intn(len(letters))]
-	}
-	errs = ValidateObjectMeta(
-		&api.ObjectMeta{Name: "test", Namespace: string(b)},
-		true,
-		func(s string, prefix bool) []string {
-			return nil
-		},
-		field.NewPath("field"))
-	if len(errs) != 2 {
-		t.Fatalf("unexpected errors: %v", errs)
-	}
-	if !strings.Contains(errs[0].Error(), "Invalid value") || !strings.Contains(errs[1].Error(), "Invalid value") {
-		t.Errorf("unexpected error message: %v", errs)
-	}
-}
-
-func TestValidateObjectMetaOwnerReferences(t *testing.T) {
-	trueVar := true
-	falseVar := false
-	testCases := []struct {
-		description          string
-		ownerReferences      []metav1.OwnerReference
-		expectError          bool
-		expectedErrorMessage string
-	}{
-		{
-			description: "simple success - third party extension.",
-			ownerReferences: []metav1.OwnerReference{
-				{
-					APIVersion: "thirdpartyVersion",
-					Kind:       "thirdpartyKind",
-					Name:       "name",
-					UID:        "1",
-				},
-			},
-			expectError:          false,
-			expectedErrorMessage: "",
-		},
-		{
-			description: "simple failures - event shouldn't be set as an owner",
-			ownerReferences: []metav1.OwnerReference{
-				{
-					APIVersion: "v1",
-					Kind:       "Event",
-					Name:       "name",
-					UID:        "1",
-				},
-			},
-			expectError:          true,
-			expectedErrorMessage: "is disallowed from being an owner",
-		},
-		{
-			description: "simple controller ref success - one reference with Controller set",
-			ownerReferences: []metav1.OwnerReference{
-				{
-					APIVersion: "thirdpartyVersion",
-					Kind:       "thirdpartyKind",
-					Name:       "name",
-					UID:        "1",
-					Controller: &falseVar,
-				},
-				{
-					APIVersion: "thirdpartyVersion",
-					Kind:       "thirdpartyKind",
-					Name:       "name",
-					UID:        "2",
-					Controller: &trueVar,
-				},
-				{
-					APIVersion: "thirdpartyVersion",
-					Kind:       "thirdpartyKind",
-					Name:       "name",
-					UID:        "3",
-					Controller: &falseVar,
-				},
-				{
-					APIVersion: "thirdpartyVersion",
-					Kind:       "thirdpartyKind",
-					Name:       "name",
-					UID:        "4",
-				},
-			},
-			expectError:          false,
-			expectedErrorMessage: "",
-		},
-		{
-			description: "simple controller ref failure - two references with Controller set",
-			ownerReferences: []metav1.OwnerReference{
-				{
-					APIVersion: "thirdpartyVersion",
-					Kind:       "thirdpartyKind",
-					Name:       "name",
-					UID:        "1",
-					Controller: &falseVar,
-				},
-				{
-					APIVersion: "thirdpartyVersion",
-					Kind:       "thirdpartyKind",
-					Name:       "name",
-					UID:        "2",
-					Controller: &trueVar,
-				},
-				{
-					APIVersion: "thirdpartyVersion",
-					Kind:       "thirdpartyKind",
-					Name:       "name",
-					UID:        "3",
-					Controller: &trueVar,
-				},
-				{
-					APIVersion: "thirdpartyVersion",
-					Kind:       "thirdpartyKind",
-					Name:       "name",
-					UID:        "4",
-				},
-			},
-			expectError:          true,
-			expectedErrorMessage: "Only one reference can have Controller set to true",
-		},
-	}
-
-	for _, tc := range testCases {
-		errs := ValidateObjectMeta(
-			&api.ObjectMeta{Name: "test", Namespace: "test", OwnerReferences: tc.ownerReferences},
-			true,
-			func(s string, prefix bool) []string {
-				return nil
-			},
-			field.NewPath("field"))
-		if len(errs) != 0 && !tc.expectError {
-			t.Errorf("unexpected error: %v in test case %v", errs, tc.description)
-		}
-		if len(errs) == 0 && tc.expectError {
-			t.Errorf("expect error in test case %v", tc.description)
-		}
-		if len(errs) != 0 && !strings.Contains(errs[0].Error(), tc.expectedErrorMessage) {
-			t.Errorf("unexpected error message: %v in test case %v", errs, tc.description)
-		}
-	}
-}
-
-func TestValidateObjectMetaUpdateIgnoresCreationTimestamp(t *testing.T) {
-	if errs := ValidateObjectMetaUpdate(
-		&api.ObjectMeta{Name: "test", ResourceVersion: "1"},
-		&api.ObjectMeta{Name: "test", ResourceVersion: "1", CreationTimestamp: metav1.NewTime(time.Unix(10, 0))},
-		field.NewPath("field"),
-	); len(errs) != 0 {
-		t.Fatalf("unexpected errors: %v", errs)
-	}
-	if errs := ValidateObjectMetaUpdate(
-		&api.ObjectMeta{Name: "test", ResourceVersion: "1", CreationTimestamp: metav1.NewTime(time.Unix(10, 0))},
-		&api.ObjectMeta{Name: "test", ResourceVersion: "1"},
-		field.NewPath("field"),
-	); len(errs) != 0 {
-		t.Fatalf("unexpected errors: %v", errs)
-	}
-	if errs := ValidateObjectMetaUpdate(
-		&api.ObjectMeta{Name: "test", ResourceVersion: "1", CreationTimestamp: metav1.NewTime(time.Unix(10, 0))},
-		&api.ObjectMeta{Name: "test", ResourceVersion: "1", CreationTimestamp: metav1.NewTime(time.Unix(11, 0))},
-		field.NewPath("field"),
-	); len(errs) != 0 {
-		t.Fatalf("unexpected errors: %v", errs)
-	}
-}
-
-func TestValidateFinalizersUpdate(t *testing.T) {
-	testcases := map[string]struct {
-		Old         api.ObjectMeta
-		New         api.ObjectMeta
-		ExpectedErr string
-	}{
-		"invalid adding finalizers": {
-			Old:         api.ObjectMeta{Name: "test", ResourceVersion: "1", DeletionTimestamp: &metav1.Time{}, Finalizers: []string{"x/a"}},
-			New:         api.ObjectMeta{Name: "test", ResourceVersion: "1", DeletionTimestamp: &metav1.Time{}, Finalizers: []string{"x/a", "y/b"}},
-			ExpectedErr: "y/b",
-		},
-		"invalid changing finalizers": {
-			Old:         api.ObjectMeta{Name: "test", ResourceVersion: "1", DeletionTimestamp: &metav1.Time{}, Finalizers: []string{"x/a"}},
-			New:         api.ObjectMeta{Name: "test", ResourceVersion: "1", DeletionTimestamp: &metav1.Time{}, Finalizers: []string{"x/b"}},
-			ExpectedErr: "x/b",
-		},
-		"valid removing finalizers": {
-			Old:         api.ObjectMeta{Name: "test", ResourceVersion: "1", DeletionTimestamp: &metav1.Time{}, Finalizers: []string{"x/a", "y/b"}},
-			New:         api.ObjectMeta{Name: "test", ResourceVersion: "1", DeletionTimestamp: &metav1.Time{}, Finalizers: []string{"x/a"}},
-			ExpectedErr: "",
-		},
-		"valid adding finalizers for objects not being deleted": {
-			Old:         api.ObjectMeta{Name: "test", ResourceVersion: "1", Finalizers: []string{"x/a"}},
-			New:         api.ObjectMeta{Name: "test", ResourceVersion: "1", Finalizers: []string{"x/a", "y/b"}},
-			ExpectedErr: "",
-		},
-	}
-	for name, tc := range testcases {
-		errs := ValidateObjectMetaUpdate(&tc.New, &tc.Old, field.NewPath("field"))
-		if len(errs) == 0 {
-			if len(tc.ExpectedErr) != 0 {
-				t.Errorf("case: %q, expected error to contain %q", name, tc.ExpectedErr)
-			}
-		} else if e, a := tc.ExpectedErr, errs.ToAggregate().Error(); !strings.Contains(a, e) {
-			t.Errorf("case: %q, expected error to contain %q, got error %q", name, e, a)
-		}
-	}
-}
-
-func TestValidateObjectMetaUpdatePreventsDeletionFieldMutation(t *testing.T) {
-	now := metav1.NewTime(time.Unix(1000, 0).UTC())
-	later := metav1.NewTime(time.Unix(2000, 0).UTC())
-	gracePeriodShort := int64(30)
-	gracePeriodLong := int64(40)
-
-	testcases := map[string]struct {
-		Old          api.ObjectMeta
-		New          api.ObjectMeta
-		ExpectedNew  api.ObjectMeta
-		ExpectedErrs []string
-	}{
-		"valid without deletion fields": {
-			Old:          api.ObjectMeta{Name: "test", ResourceVersion: "1"},
-			New:          api.ObjectMeta{Name: "test", ResourceVersion: "1"},
-			ExpectedNew:  api.ObjectMeta{Name: "test", ResourceVersion: "1"},
-			ExpectedErrs: []string{},
-		},
-		"valid with deletion fields": {
-			Old:          api.ObjectMeta{Name: "test", ResourceVersion: "1", DeletionTimestamp: &now, DeletionGracePeriodSeconds: &gracePeriodShort},
-			New:          api.ObjectMeta{Name: "test", ResourceVersion: "1", DeletionTimestamp: &now, DeletionGracePeriodSeconds: &gracePeriodShort},
-			ExpectedNew:  api.ObjectMeta{Name: "test", ResourceVersion: "1", DeletionTimestamp: &now, DeletionGracePeriodSeconds: &gracePeriodShort},
-			ExpectedErrs: []string{},
-		},
-
-		"invalid set deletionTimestamp": {
-			Old:          api.ObjectMeta{Name: "test", ResourceVersion: "1"},
-			New:          api.ObjectMeta{Name: "test", ResourceVersion: "1", DeletionTimestamp: &now},
-			ExpectedNew:  api.ObjectMeta{Name: "test", ResourceVersion: "1", DeletionTimestamp: &now},
-			ExpectedErrs: []string{"field.deletionTimestamp: Invalid value: \"1970-01-01T00:16:40Z\": field is immutable; may only be changed via deletion"},
-		},
-		"invalid clear deletionTimestamp": {
-			Old:          api.ObjectMeta{Name: "test", ResourceVersion: "1", DeletionTimestamp: &now},
-			New:          api.ObjectMeta{Name: "test", ResourceVersion: "1"},
-			ExpectedNew:  api.ObjectMeta{Name: "test", ResourceVersion: "1", DeletionTimestamp: &now},
-			ExpectedErrs: []string{}, // no errors, validation copies the old value
-		},
-		"invalid change deletionTimestamp": {
-			Old:          api.ObjectMeta{Name: "test", ResourceVersion: "1", DeletionTimestamp: &now},
-			New:          api.ObjectMeta{Name: "test", ResourceVersion: "1", DeletionTimestamp: &later},
-			ExpectedNew:  api.ObjectMeta{Name: "test", ResourceVersion: "1", DeletionTimestamp: &now},
-			ExpectedErrs: []string{}, // no errors, validation copies the old value
-		},
-
-		"invalid set deletionGracePeriodSeconds": {
-			Old:          api.ObjectMeta{Name: "test", ResourceVersion: "1"},
-			New:          api.ObjectMeta{Name: "test", ResourceVersion: "1", DeletionGracePeriodSeconds: &gracePeriodShort},
-			ExpectedNew:  api.ObjectMeta{Name: "test", ResourceVersion: "1", DeletionGracePeriodSeconds: &gracePeriodShort},
-			ExpectedErrs: []string{"field.deletionGracePeriodSeconds: Invalid value: 30: field is immutable; may only be changed via deletion"},
-		},
-		"invalid clear deletionGracePeriodSeconds": {
-			Old:          api.ObjectMeta{Name: "test", ResourceVersion: "1", DeletionGracePeriodSeconds: &gracePeriodShort},
-			New:          api.ObjectMeta{Name: "test", ResourceVersion: "1"},
-			ExpectedNew:  api.ObjectMeta{Name: "test", ResourceVersion: "1", DeletionGracePeriodSeconds: &gracePeriodShort},
-			ExpectedErrs: []string{}, // no errors, validation copies the old value
-		},
-		"invalid change deletionGracePeriodSeconds": {
-			Old:          api.ObjectMeta{Name: "test", ResourceVersion: "1", DeletionGracePeriodSeconds: &gracePeriodShort},
-			New:          api.ObjectMeta{Name: "test", ResourceVersion: "1", DeletionGracePeriodSeconds: &gracePeriodLong},
-			ExpectedNew:  api.ObjectMeta{Name: "test", ResourceVersion: "1", DeletionGracePeriodSeconds: &gracePeriodLong},
-			ExpectedErrs: []string{"field.deletionGracePeriodSeconds: Invalid value: 40: field is immutable; may only be changed via deletion"},
-		},
-	}
-
-	for k, tc := range testcases {
-		errs := ValidateObjectMetaUpdate(&tc.New, &tc.Old, field.NewPath("field"))
-		if len(errs) != len(tc.ExpectedErrs) {
-			t.Logf("%s: Expected: %#v", k, tc.ExpectedErrs)
-			t.Logf("%s: Got: %#v", k, errs)
-			t.Errorf("%s: expected %d errors, got %d", k, len(tc.ExpectedErrs), len(errs))
-			continue
-		}
-		for i := range errs {
-			if errs[i].Error() != tc.ExpectedErrs[i] {
-				t.Errorf("%s: error #%d: expected %q, got %q", k, i, tc.ExpectedErrs[i], errs[i].Error())
-			}
-		}
-		if !reflect.DeepEqual(tc.New, tc.ExpectedNew) {
-			t.Errorf("%s: Expected after validation:\n%#v\ngot\n%#v", k, tc.ExpectedNew, tc.New)
-		}
-	}
-}
-
-func TestObjectMetaGenerationUpdate(t *testing.T) {
-	testcases := map[string]struct {
-		Old          api.ObjectMeta
-		New          api.ObjectMeta
-		ExpectedErrs []string
-	}{
-		"invalid generation change - decremented": {
-			Old:          api.ObjectMeta{Name: "test", ResourceVersion: "1", Generation: 5},
-			New:          api.ObjectMeta{Name: "test", ResourceVersion: "1", Generation: 4},
-			ExpectedErrs: []string{"field.generation: Invalid value: 4: must not be decremented"},
-		},
-		"valid generation change - incremented by one": {
-			Old:          api.ObjectMeta{Name: "test", ResourceVersion: "1", Generation: 1},
-			New:          api.ObjectMeta{Name: "test", ResourceVersion: "1", Generation: 2},
-			ExpectedErrs: []string{},
-		},
-		"valid generation field - not updated": {
-			Old:          api.ObjectMeta{Name: "test", ResourceVersion: "1", Generation: 5},
-			New:          api.ObjectMeta{Name: "test", ResourceVersion: "1", Generation: 5},
-			ExpectedErrs: []string{},
-		},
-	}
-
-	for k, tc := range testcases {
-		errList := []string{}
-		errs := ValidateObjectMetaUpdate(&tc.New, &tc.Old, field.NewPath("field"))
-		if len(errs) != len(tc.ExpectedErrs) {
-			t.Logf("%s: Expected: %#v", k, tc.ExpectedErrs)
-			for _, err := range errs {
-				errList = append(errList, err.Error())
-			}
-			t.Logf("%s: Got: %#v", k, errList)
-			t.Errorf("%s: expected %d errors, got %d", k, len(tc.ExpectedErrs), len(errs))
-			continue
-		}
-		for i := range errList {
-			if errList[i] != tc.ExpectedErrs[i] {
-				t.Errorf("%s: error #%d: expected %q, got %q", k, i, tc.ExpectedErrs[i], errList[i])
-			}
-		}
-	}
-}
-
-// Ensure trailing slash is allowed in generate name
-func TestValidateObjectMetaTrimsTrailingSlash(t *testing.T) {
-	errs := ValidateObjectMeta(
-		&api.ObjectMeta{Name: "test", GenerateName: "foo-"},
-		false,
-		NameIsDNSSubdomain,
-		field.NewPath("field"))
-	if len(errs) != 0 {
-		t.Fatalf("unexpected errors: %v", errs)
-	}
-}
-
-func TestValidateAnnotations(t *testing.T) {
-	successCases := []map[string]string{
-		{"simple": "bar"},
-		{"now-with-dashes": "bar"},
-		{"1-starts-with-num": "bar"},
-		{"1234": "bar"},
-		{"simple/simple": "bar"},
-		{"now-with-dashes/simple": "bar"},
-		{"now-with-dashes/now-with-dashes": "bar"},
-		{"now.with.dots/simple": "bar"},
-		{"now-with.dashes-and.dots/simple": "bar"},
-		{"1-num.2-num/3-num": "bar"},
-		{"1234/5678": "bar"},
-		{"1.2.3.4/5678": "bar"},
-		{"UpperCase123": "bar"},
-		{"a": strings.Repeat("b", totalAnnotationSizeLimitB-1)},
-		{
-			"a": strings.Repeat("b", totalAnnotationSizeLimitB/2-1),
-			"c": strings.Repeat("d", totalAnnotationSizeLimitB/2-1),
-		},
-	}
-	for i := range successCases {
-		errs := ValidateAnnotations(successCases[i], field.NewPath("field"))
-		if len(errs) != 0 {
-			t.Errorf("case[%d] expected success, got %#v", i, errs)
-		}
-	}
-
-	nameErrorCases := []struct {
-		annotations map[string]string
-		expect      string
-	}{
-		{map[string]string{"nospecialchars^=@": "bar"}, "must match the regex"},
-		{map[string]string{"cantendwithadash-": "bar"}, "must match the regex"},
-		{map[string]string{"only/one/slash": "bar"}, "must match the regex"},
-		{map[string]string{strings.Repeat("a", 254): "bar"}, "must be no more than"},
-	}
-	for i := range nameErrorCases {
-		errs := ValidateAnnotations(nameErrorCases[i].annotations, field.NewPath("field"))
-		if len(errs) != 1 {
-			t.Errorf("case[%d]: expected failure", i)
-		} else {
-			if !strings.Contains(errs[0].Detail, nameErrorCases[i].expect) {
-				t.Errorf("case[%d]: error details do not include %q: %q", i, nameErrorCases[i].expect, errs[0].Detail)
-			}
-		}
-	}
-	totalSizeErrorCases := []map[string]string{
-		{"a": strings.Repeat("b", totalAnnotationSizeLimitB)},
-		{
-			"a": strings.Repeat("b", totalAnnotationSizeLimitB/2),
-			"c": strings.Repeat("d", totalAnnotationSizeLimitB/2),
-		},
-	}
-	for i := range totalSizeErrorCases {
-		errs := ValidateAnnotations(totalSizeErrorCases[i], field.NewPath("field"))
-		if len(errs) != 1 {
-			t.Errorf("case[%d] expected failure", i)
 		}
 	}
 }
@@ -1152,7 +717,7 @@ func TestValidateVolumes(t *testing.T) {
 			},
 			errtype:   field.ErrorTypeInvalid,
 			errfield:  "name",
-			errdetail: "must match the regex",
+			errdetail: dnsLabelErrMsg,
 		},
 		// More than one source field specified.
 		{
@@ -2530,7 +2095,7 @@ func TestValidateEnv(t *testing.T) {
 		{
 			name:          "name not a C identifier",
 			envs:          []api.EnvVar{{Name: "a.b.c"}},
-			expectedError: `[0].name: Invalid value: "a.b.c": must match the regex`,
+			expectedError: `[0].name: Invalid value: "a.b.c": ` + idErrMsg,
 		},
 		{
 			name: "value and valueFrom specified",
@@ -2696,6 +2261,65 @@ func TestValidateEnv(t *testing.T) {
 	}
 	for _, tc := range errorCases {
 		if errs := validateEnv(tc.envs, field.NewPath("field")); len(errs) == 0 {
+			t.Errorf("expected failure for %s", tc.name)
+		} else {
+			for i := range errs {
+				str := errs[i].Error()
+				if str != "" && !strings.Contains(str, tc.expectedError) {
+					t.Errorf("%s: expected error detail either empty or %q, got %q", tc.name, tc.expectedError, str)
+				}
+			}
+		}
+	}
+}
+
+func TestValidateEnvFrom(t *testing.T) {
+	successCase := []api.EnvFromSource{
+		{
+			ConfigMapRef: &api.ConfigMapEnvSource{
+				LocalObjectReference: api.LocalObjectReference{Name: "abc"},
+			},
+		},
+		{
+			Prefix: "pre_",
+			ConfigMapRef: &api.ConfigMapEnvSource{
+				LocalObjectReference: api.LocalObjectReference{Name: "abc"},
+			},
+		},
+	}
+	if errs := validateEnvFrom(successCase, field.NewPath("field")); len(errs) != 0 {
+		t.Errorf("expected success: %v", errs)
+	}
+
+	errorCases := []struct {
+		name          string
+		envs          []api.EnvFromSource
+		expectedError string
+	}{
+		{
+			name: "zero-length name",
+			envs: []api.EnvFromSource{
+				{
+					ConfigMapRef: &api.ConfigMapEnvSource{
+						LocalObjectReference: api.LocalObjectReference{Name: ""}},
+				},
+			},
+			expectedError: "field[0].configMapRef.name: Required value",
+		},
+		{
+			name: "invalid prefix",
+			envs: []api.EnvFromSource{
+				{
+					Prefix: "a.b",
+					ConfigMapRef: &api.ConfigMapEnvSource{
+						LocalObjectReference: api.LocalObjectReference{Name: "abc"}},
+				},
+			},
+			expectedError: `field[0].prefix: Invalid value: "a.b": ` + idErrMsg,
+		},
+	}
+	for _, tc := range errorCases {
+		if errs := validateEnvFrom(tc.envs, field.NewPath("field")); len(errs) == 0 {
 			t.Errorf("expected failure for %s", tc.name)
 		} else {
 			for i := range errs {
@@ -5495,6 +5119,15 @@ func TestValidateService(t *testing.T) {
 			},
 			numErrs: 1,
 		},
+		{
+			name: "invalid node port with clusterIP None",
+			tweakSvc: func(s *api.Service) {
+				s.Spec.Type = api.ServiceTypeNodePort
+				s.Spec.Ports = append(s.Spec.Ports, api.ServicePort{Name: "q", Port: 1, Protocol: "TCP", NodePort: 1, TargetPort: intstr.FromInt(1)})
+				s.Spec.ClusterIP = "None"
+			},
+			numErrs: 1,
+		},
 	}
 
 	for _, tc := range testCases {
@@ -7090,6 +6723,20 @@ func TestValidateServiceUpdate(t *testing.T) {
 			},
 			numErrs: 0,
 		},
+		{
+			name: "invalid node port with clusterIP None",
+			tweakSvc: func(oldSvc, newSvc *api.Service) {
+				oldSvc.Spec.Type = api.ServiceTypeNodePort
+				newSvc.Spec.Type = api.ServiceTypeNodePort
+
+				oldSvc.Spec.Ports = append(oldSvc.Spec.Ports, api.ServicePort{Name: "q", Port: 1, Protocol: "TCP", NodePort: 1, TargetPort: intstr.FromInt(1)})
+				newSvc.Spec.Ports = append(newSvc.Spec.Ports, api.ServicePort{Name: "q", Port: 1, Protocol: "TCP", NodePort: 1, TargetPort: intstr.FromInt(1)})
+
+				oldSvc.Spec.ClusterIP = ""
+				newSvc.Spec.ClusterIP = "None"
+			},
+			numErrs: 1,
+		},
 	}
 
 	for _, tc := range testCases {
@@ -7288,11 +6935,11 @@ func TestValidateLimitRange(t *testing.T) {
 		},
 		"invalid-name": {
 			api.LimitRange{ObjectMeta: api.ObjectMeta{Name: "^Invalid", Namespace: "foo"}, Spec: api.LimitRangeSpec{}},
-			"must match the regex",
+			dnsSubdomainLabelErrMsg,
 		},
 		"invalid-namespace": {
 			api.LimitRange{ObjectMeta: api.ObjectMeta{Name: "abc", Namespace: "^Invalid"}, Spec: api.LimitRangeSpec{}},
-			"must match the regex",
+			dnsLabelErrMsg,
 		},
 		"duplicate-limit-type": {
 			api.LimitRange{ObjectMeta: api.ObjectMeta{Name: "abc", Namespace: "foo"}, Spec: api.LimitRangeSpec{
@@ -7634,11 +7281,11 @@ func TestValidateResourceQuota(t *testing.T) {
 		},
 		"invalid Name": {
 			api.ResourceQuota{ObjectMeta: api.ObjectMeta{Name: "^Invalid", Namespace: "foo"}, Spec: spec},
-			"must match the regex",
+			dnsSubdomainLabelErrMsg,
 		},
 		"invalid Namespace": {
 			api.ResourceQuota{ObjectMeta: api.ObjectMeta{Name: "abc", Namespace: "^Invalid"}, Spec: spec},
-			"must match the regex",
+			dnsLabelErrMsg,
 		},
 		"negative-limits": {
 			api.ResourceQuota{ObjectMeta: api.ObjectMeta{Name: "abc", Namespace: "foo"}, Spec: negativeSpec},
@@ -8232,12 +7879,12 @@ func TestValidateEndpoints(t *testing.T) {
 		"invalid namespace": {
 			endpoints:   api.Endpoints{ObjectMeta: api.ObjectMeta{Name: "mysvc", Namespace: "no@#invalid.;chars\"allowed"}},
 			errorType:   "FieldValueInvalid",
-			errorDetail: "must match the regex",
+			errorDetail: dnsLabelErrMsg,
 		},
 		"invalid name": {
 			endpoints:   api.Endpoints{ObjectMeta: api.ObjectMeta{Name: "-_Invliad^&Characters", Namespace: "namespace"}},
 			errorType:   "FieldValueInvalid",
-			errorDetail: "must match the regex",
+			errorDetail: dnsSubdomainLabelErrMsg,
 		},
 		"empty addresses": {
 			endpoints: api.Endpoints{
@@ -8508,7 +8155,7 @@ func TestValidateSecurityContext(t *testing.T) {
 		"request privileged when capabilities forbids": {
 			sc:          privRequestWithGlobalDeny,
 			errorType:   "FieldValueForbidden",
-			errorDetail: "disallowed by policy",
+			errorDetail: "disallowed by cluster policy",
 		},
 		"negative RunAsUser": {
 			sc:          negativeRunAsUser,

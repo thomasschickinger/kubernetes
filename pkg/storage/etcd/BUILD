@@ -43,7 +43,7 @@ go_test(
         "etcd_helper_test.go",
         "etcd_watcher_test.go",
     ],
-    library = "go_default_library",
+    library = ":go_default_library",
     tags = ["automanaged"],
     deps = [
         "//pkg/api:go_default_library",
@@ -64,4 +64,23 @@ go_test(
         "//vendor:github.com/coreos/etcd/client",
         "//vendor:golang.org/x/net/context",
     ],
+)
+
+filegroup(
+    name = "package-srcs",
+    srcs = glob(["**"]),
+    tags = ["automanaged"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "all-srcs",
+    srcs = [
+        ":package-srcs",
+        "//pkg/storage/etcd/etcdtest:all-srcs",
+        "//pkg/storage/etcd/metrics:all-srcs",
+        "//pkg/storage/etcd/testing:all-srcs",
+        "//pkg/storage/etcd/util:all-srcs",
+    ],
+    tags = ["automanaged"],
 )
